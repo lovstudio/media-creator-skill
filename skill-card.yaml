@@ -102,21 +102,21 @@ dimensions:
     evidence: "真实案例记录视频号对象 ID、回读状态 status=1、isPostProcessSuccess=true、isPostHasPosted=true，并最终标记 published。"
     score: "evidence-backed"
 pricing:
-  model: free
+  model: one_time
   currency: CNY
-  list_price_cny: 0
-  basis: "本地 Skill 通过可复用的媒体清单、FFmpeg 操作规范、原声保护规则和质检脚本降低重复剪辑与返工成本。"
-  boundary: "免费范围包含本地制作指令、探测/时间线/音频质检脚本和交付模板；不包含云端渲染、素材版权、平台账号或发布代操作。"
-  review_trigger: "当新增平台编码要求、云端渲染服务或持续维护成本，重新评估是否拆出付费执行服务。"
-  confidence: internal
+  list_price_cny: 9.9
+  basis: "CNY 9.9 是完整本地媒体制作工作流的一次性低门槛入口价，价值来自可复用的媒体清单、FFmpeg 操作规范、原声保护规则和质检脚本；它不是定制执行或成本回收价。"
+  boundary: "包含本地制作指令、探测/时间线/音频质检脚本和交付模板；不包含云端渲染、素材版权、平台账号或发布代操作。"
+  review_trigger: "首发 30 天、100 次付费兑换、版本变化，或平台规范与单买家支持成本明显变化时复评。"
+  confidence: medium
 distribution:
   paid:
+    - channel: lovstudio
+      status: live
     - channel: workbuddy
       status: not-published
     - channel: skillpay
       status: not-published
   free:
     - channel: github
-      status: not-published
-    - channel: lovstudio
-      status: local-only
+      status: live

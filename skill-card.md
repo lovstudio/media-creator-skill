@@ -71,8 +71,8 @@ The machine-readable card records four evidence-backed dimensions: editorial fit
 
 ### Pricing Basis
 
-See [`pricing-card.yaml`](pricing-card.yaml). The local Skill is free; its boundary excludes cloud rendering, media licensing, account credentials and platform operation.
+See [`pricing-card.yaml`](pricing-card.yaml). The complete local workflow is a one-time CNY 9.9 paid entry on LovStudio; its boundary excludes cloud rendering, media licensing, account credentials and platform operation.
 
 ### Distribution
 
-Paid channels: `workbuddy` and `skillpay` are `not-published`. Free channels: `github` is `not-published`, and `lovstudio` is `local-only`. None of these states claims a live remote release.
+Paid channels: `lovstudio` is `live`; `workbuddy` and `skillpay` are `not-published`. The MIT-licensed source remains live on `github` as a free channel.

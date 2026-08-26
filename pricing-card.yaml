@@ -1,10 +1,10 @@
 schema: lovstudio/pricing-card/v1
 version: "0.9.1"
-model: free
+model: one_time
 currency: CNY
-list_price_cny: 0
+list_price_cny: 9.9
 value_anchor: "把一次长录屏整理成可发布成片时，最昂贵的返工通常来自误删原声、等待段过长、编码不兼容和没有证据的发布状态；本 Skill 将这些门禁固化为流程和脚本。"
-basis: "本地免费交付的是可复用的媒体制作方法、FFmpeg 参数、EDL 约束、BGM ducking 规则、正式封面图片门禁和质检报告模板；用户自行提供素材、运行环境与平台账号。"
+basis: "CNY 9.9 是完整本地媒体制作工作流的一次性低门槛入口价，交付可复用的方法、FFmpeg 参数、EDL 约束、BGM ducking 规则、正式封面图片门禁和质检报告模板；它不是定制剪辑、托管执行或成本回收价。"
 boundary: "不包含云端渲染、素材购买、平台账号、Cookie、人工代发、远程存储或版权授权判断。"
-review_trigger: "当平台编码规范变化、加入云端执行或维护成本持续增加时，重新评估免费范围与付费执行服务。"
-confidence: internal
+review_trigger: "首发 30 天、100 次付费兑换、版本变化，或平台规范与单买家支持成本明显变化时复评。"
+confidence: medium

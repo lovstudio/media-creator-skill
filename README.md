@@ -101,7 +101,7 @@ MKV 是内部审校与归档容器。即使平台允许上传 MKV，也不等于
 
 - [`skill-card.yaml`](skill-card.yaml) / [`skill-card.md`](skill-card.md)：用途、负责人、依赖、风险、输出与维度地图。
 - [`cases/cases.json`](cases/cases.json)：真实 Input → Prompt → Output 证据。
-- [`pricing-card.yaml`](pricing-card.yaml)：价值锚点、免费边界和复评条件。
+- [`pricing-card.yaml`](pricing-card.yaml)：价值锚点、付费边界和复评条件。
 
 ## 质量门
 
