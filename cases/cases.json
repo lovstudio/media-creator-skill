@@ -84,5 +84,74 @@
         "external_srt_sha256": "7d54fb4ede731eb990ae4e36dd7d002c64fbb8defc60a92d09f0585cda912c02"
       }
     }
+  },
+  {
+    "id": "screenstudio-remotion-skill-limits-ep01",
+    "type": "case",
+    "title": "《手工川 AI 实战》EP.01：从 Screen Studio 源工程到双比例 Remotion 成片",
+    "description": "真实项目直接读取 Screen Studio 源工程的独立屏幕、摄像头、麦克风、系统声与事件轨，经过多轮审片修复完整句截断、口误重说、静音钩子、摄像头断层、动画遮挡、章节导航和 BGM 卡顿，最终交付横竖双版、官网产品卡、片尾资源页和平台封面，并公开发布可回看的 B 站版本。",
+    "input": {
+      "items": [
+        "一份 565.632 秒的 .screenstudio 源工程",
+        "独立 display / webcam / microphone / system-audio 通道",
+        "鼠标、点击、快捷键和自动缩放事件",
+        "主题：高阶技巧——如何突破 Skill 限制",
+        "平台目标：横版优先，锁定后同步派生十分钟内的竖版"
+      ],
+      "source_profile": {
+        "duration_seconds": 565.632,
+        "display_resolution": "3024x1964",
+        "webcam_resolution": "1920x1080",
+        "audio_sample_rate": 48000,
+        "source_type": "Screen Studio project"
+      }
+    },
+    "prompt": "基于 Screen Studio 源工程制作《手工川 AI 实战》第一期，横版优先，十分钟内同时做竖版；清理口水词和口误但不得截断句子，BGM 最后挂载，章节全程可见，重点产品使用官网信息卡，并在片尾整理素材与完整网址。",
+    "output": {
+      "items": [
+        "横版成片：1920x1080、30fps、H.264 + AAC、358.549 秒",
+        "竖版成片：1080x1920、30fps，并按视频号实际容器预留顶部安全区",
+        "243 条审校字幕、2 张官网产品卡、1 张 7.2 秒片尾资源页",
+        "Remotion Studio 双 Composition、双比例封面与可回读质检报告",
+        "B 站公开成片：https://www.bilibili.com/video/BV1Zx8Z6vEgj/"
+      ],
+      "editorial_changes": [
+        "39 个样本级 cleanup range 删除 36.44 秒口水词、失败起句和错误修正",
+        "开场由两个槽点和一个完整结果证据组成，不显示内部高光标签，也不保留表情整理",
+        "章节卡只显示章号和标题，顶部进度导航任意时刻显示全部五章",
+        "保持摄像头连续，并在用户恢复操作屏幕时结束解释动画",
+        "为 Codeex 与 Yoda 制作官网信息卡，片尾列出资源和 BGM 来源",
+        "画面与对白锁定后最后生成单条连续 BGM，Remotion 根层只挂载一次",
+        "封面只保留“如何突破 Skill 限制”主标题与系列标识，使用异字号混排并复用已确认职业照"
+      ],
+      "quality_metrics": {
+        "source_playback_rate": 1.12,
+        "cleanup_range_count": 39,
+        "cleanup_removed_seconds": 36.44,
+        "clip_count": 78,
+        "caption_count": 243,
+        "full_asr_segment_count": 218,
+        "full_asr_filler_gate": "no standalone 啊 / 呃 / 嗯 and no Agent Ski restart",
+        "bgm_internal_silence_gate": "no silence >=250ms at -55dB",
+        "studio_playback_fps": 30.08,
+        "studio_fresh_console": "0 errors / 0 warnings",
+        "bilibili_video_sha256": "2f5d96d2fa84e91d310b910eb940fa1ed11471ffd3d385cef0054a3ea06bdc93"
+      },
+      "publication": {
+        "platform": "Bilibili",
+        "url": "https://www.bilibili.com/video/BV1Zx8Z6vEgj/",
+        "bvid": "BV1Zx8Z6vEgj",
+        "title": "如何突破 Skill 限制",
+        "collection": "手工川 AI 实战",
+        "state": "public"
+      }
+    },
+    "evidence": {
+      "acceptance": "user-confirmed",
+      "verified_at": "2026-08-27",
+      "method": "用户在最终审片中明确评价“感觉 95% 没问题了，行，这个版本的迭代先到这”；随后对平台文件执行 SHA-256 与 FFprobe 回读，并通过 Bilibili 公开接口确认稿件标题、公开状态、1920x1080 画幅和“手工川 AI 实战”合集归属。",
+      "privacy": "已移除本地绝对路径、Screen Studio 工程内容、原始转写全文、账号凭据和发布会话信息；只保留用户本人公开发布的 B 站链接、公开封面与不可逆媒体摘要。"
+    },
+    "cover": "https://i1.hdslb.com/bfs/archive/ff07bff235da934be1f30f940527ea67ed11f361.jpg"
   }
 ]
