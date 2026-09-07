@@ -1,12 +1,13 @@
 # Delivery Contract
 
-成片交付由文件、字幕批准、参数、创意判断和状态证据共同组成。审校 MKV 不代表字幕已批准，单独存在的 MP4 也不代表已经发布。
+成片交付由 Remotion Studio 主预览、文件、字幕批准、参数、创意判断和状态证据共同组成。字幕修正 MKV 不代表字幕已批准，单独存在的 MP4 也不代表已经发布。
 
 ## Required deliverables
 
-- `review-vN.mkv`：第一遍审校母版；画面不烧旁白字幕，内嵌一个默认 SubRip 字幕轨；
-- `review-vN.srt`：与审校 MKV 同源的 UTF-8 外置字幕，供 Subtitle Edit 直接修改；
-- `subtitle-review.json`：审校 MKV/SRT 的流信息、条数、状态和 SHA-256；
+- Remotion Studio 主预览：加载当前画面、最终音频/BGM 与当前权威字幕；报告记录 URL、主 Composition、字幕 SHA-256 和刷新验证；
+- `review-vN.mkv`：仅在需要 Subtitle Edit 修正字幕时生成；画面不烧旁白字幕，内嵌一个默认 SubRip 字幕轨；
+- `review-vN.srt`：仅在字幕修正流程中生成，与 MKV 同源的 UTF-8 外置字幕；
+- `subtitle-review.json`：字幕修正 MKV/SRT 的流信息、条数、状态和 SHA-256；
 - `subs-approved-vN.srt`：用户批准后的唯一权威字幕源；批准前不得出现；
 - `master-vN.mkv`：以批准 SRT 替换字幕轨的归档母版，视频/音频 stream copy；
 - `platform-<name>-vN.mp4`：目标平台文件；按平台采用批准字幕烧录或平台 CC；
@@ -15,6 +16,8 @@
   `creative_status` 通过**；
 - `first-frame.png`：仅在做了开场静帧时——从成片抽出的实际第一帧，用于目视确认；
 - `edit-manifest.json`：源素材、时间线、保护段和混音策略；
+- `iteration-plan.json`：本轮 phase、revision 变化、实际运行、缓存复用与阶段阻塞；
+- `iteration-timings.json`：实际执行 stage 的墙钟记录；被复用的 stage 不伪造为 0 秒；
 - `final-probe.json`：当前阶段媒体的视频、音频、字幕、时长、尺寸、帧率和编码信息；
 - `audio-qc.json`：响度、峰值、采样率、声道和检查状态；
 - `timeline-check.json`：**由脚本从 EDL 生成**的结构与时间码（片头分镜、片名卡、逐章黑幕
@@ -44,11 +47,12 @@ opening_still_hold: 1.5s
 
 状态解释：
 
-- `render_status=review-ready`：审校 MKV 存在、可解码，且内嵌 SRT 与外置 SRT 回抽一致；
+- `render_status=review-ready`：Remotion Studio 主预览可访问且加载当前字幕/最终音频；若进入 Subtitle Edit 流程，字幕修正 MKV 还须可解码且内嵌 SRT 与外置 SRT 回抽一致；
 - `render_status=passed`：批准后的归档母版或平台文件存在、可解码，且媒体参数符合目标；
 - `subtitle_status=awaiting-review`：字幕仍可编辑，不能称为最终成片；
 - `subtitle_status=approved`：用户明确确认了报告所列 SHA-256 对应的 SRT；
 - `delivery_status=blocked-on-subtitle-approval`：平台文件不得生成或交接；
+- `delivery_status=approved-master-ready`：批准字幕已进入归档母版且质检通过；尚未请求或生成平台文件；
 - `delivery_status=platform-ready`：批准字幕已按目标平台方式封装或烧录并通过质检；
 - `audio_status=passed`：原声保护、混音、响度和峰值检查通过；
 - `creative_status=passed`：标题、封面、叙事结构和证据段完成；
@@ -65,24 +69,28 @@ opening_still_hold: 1.5s
 报告至少记录：
 
 1. 输入文件的可识别名称、源时长和源媒体参数；
-2. 当前阶段（review / approved master / platform）、目标规格与实际输出规格；
+2. 当前阶段（draft / locked / approved）、目标规格与实际输出规格；
 3. 被压缩、被跳过和被保护的时间段；
-4. BGM 文件名、ducking 规则和高潮段原声处理；
-5. 视频解码、时间线、响度、峰值和人工回看的结论；
-6. 标题、封面文案、每个目标比例的正式图片路径/尺寸/SHA-256、目视结论和未验证假设；
-7. 做了开场静帧时：静帧图路径与版本、画幅适配方式（裁掉多少 / 是否补边）、停留时长，
+4. 开场请求策略、最终策略、判别来源与理由；是否使用 Highlights，以及问题后标题的文案和锚点；
+5. BGM 文件名、ducking 规则和高潮段原声处理；
+6. 视频解码、时间线、响度、峰值和人工回看的结论；
+7. 标题、封面文案、每个目标比例的正式图片路径/尺寸/SHA-256、目视结论和未验证假设；
+8. 做了开场静帧时：静帧图路径与版本、画幅适配方式（裁掉多少 / 是否补边）、停留时长，
    以及一条明确前提——**这版成片的第一帧绑定了这一版静帧图，换图必须重渲染**；
-8. 审校 MKV、外置 SRT、批准 SRT 的 SHA-256，以及字幕批准人/确认时间（如果已批准）；
-9. 平台容器支持证据、验证日期和字幕交付方式（embedded / platform-cc / burned-in）；
-10. 发布对象、回读时间和原始状态字段（如果发生发布）。
-11. 有逐章黑幕卡时：每张卡的序号、语义标题、命名依据、停留时长、卡片起点和正文起点；另记
+9. 审校 MKV、外置 SRT、批准 SRT 的 SHA-256，以及字幕批准人/确认时间（如果已批准）；
+10. 平台容器支持证据、验证日期和字幕交付方式（embedded / platform-cc / burned-in）；
+11. 发布对象、回读时间和原始状态字段（如果发生发布）。
+12. 有逐章黑幕卡时：每张卡的序号、语义标题、命名依据、停留时长、卡片起点和正文起点；另记
     “没有切进 cue / 音画字幕累计偏移一致”的验证结论。
+13. 本轮 changed domains、实际运行和复用的 stage、总墙钟与最长 stage；普通 draft 超过 15 分钟时，
+    必须基于 timing 报告解释具体等待链。
 
 ## Handoff boundary
 
 交给发布 Skill 时只发送 `subtitle_status=approved`、`delivery_status=platform-ready` 且
 `cover_status=approved` 的平台文件、正式封面图片、标题、简介/标签、批准 SRT（平台支持 CC 时）
-和交付报告。只有 `cover-brief.md` 时不得进入发布交接。审校 MKV 不得进入发布交接。账号、
+和交付报告。正式封面必须由 Creator 在交接前解决；专用封面 Skill 缺失时走图像或 Remotion
+回退，Publisher 不负责补图。只有 `cover-brief.md` 时不得进入发布交接。审校 MKV 不得进入发布交接。账号、
 Cookie、验证码和平台内部令牌留在运行时，不进入源目录或报告。发布 Skill 返回的状态与回读
 证据再写入交付报告的 `publish_status` 区域。
 
@@ -90,8 +98,8 @@ Cookie、验证码和平台内部令牌留在运行时，不进入源目录或�
 画幅的文件，不可能是同一张图，但观众会连着看到——列表页一张、点开第一帧另一张——两者
 风格不统一就像两个来源。在报告里点名两个文件的路径与版本，不要只写「已附封面」。
 
-上游边界在「封面已定稿」。视频号封面的钩子公式、风格锁定与整墙一致性属于
-`lov-channels-cover`；本 Skill 不复制它的评分，也不改它的门禁常量。
+上游边界在「封面已定稿」。发现 `lov-channels-cover` 时使用其钩子、风格锁定与整墙门禁；
+未发现时改走可用图像能力或 Remotion 回退，并保留同等尺寸、安全区与目视验收。
 
 **首帧不是封面的一个比例档**：平台把封面（3:4，主页九宫格与分享卡片）和视频画面
 （竖版普遍 9:16）分给了不同场景，本来就不期待同比例。需要首帧时单独设计一张 9:16 图，

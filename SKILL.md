@@ -1,18 +1,20 @@
 ---
 name: lov-media-creator
 description: >
-  把录屏和演示素材剪成可审校、可发布成片：先交内嵌可编辑 SRT 的 MKV，再以批准字幕生成
-  归档母版、平台文件与真实封面图片；同时保留关键原声、混音与质检。Use when creating
-  subtitle-review or publish-ready screen-recording videos and recurring series.
+  把 MP4 或 Screen Studio 源工程剪成 Remotion 成片：保留独立画面、摄像头、麦克风与事件轨，
+  完成精剪、章节、字幕、动画、横竖版和封面；先交 Studio 审校，再生成平台文件。
+  Use when editing recordings or .screenstudio projects into review or publish-ready videos.
 license: MIT
 compatibility: >
   Portable Agent Skills format. Requires Python 3.8+ and FFmpeg/FFprobe.
-  Optional Pillow or an image tool for new cover assets. 视频号封面（3:4）由
-  `lov-channels-cover` 上游产出，不是安装依赖；开场静帧是另一个交付物，需要一张与
-  成片同画幅（竖版通常 9:16）的图。
+  Screen Studio source-project integration additionally requires Node.js and Remotion.
+  Publish-ready runs require an image tool or a Remotion Cover composition for cover assets.
+  视频号封面优先交给可用的 `lov-channels-cover`；缺失时必须回退，开场静帧仍默认关闭。
+depends_on:
+  - lov-branding-consistency
 metadata:
   author: contributors
-  version: "0.9.1"
+  version: "0.13.3"
   card_standard: lovstudio/skill-card/v1
   tags:
     - media-production
@@ -22,12 +24,14 @@ metadata:
     - delivery-qc
     - cover-assets
     - opening-still
+    - screen-studio
+    - remotion
   compatibility: "Python 3.8+, FFmpeg/FFprobe, optional Pillow or an image tool for cover assets."
 ---
 
-# lov-media-creator — 从素材到字幕审校母版与可发布成片
+# 天才剪辑师 · Video Studio
 
-把录屏、演示素材、原声和 BGM 组织成两阶段视频交付：先生成可在 Subtitle Edit 中校对的软字幕 MKV，再以用户批准的 SRT 生成归档母版和平台文件；同时交付剪辑清单、正式封面图片和可回读的质检报告。叙事重点放在真实工作流和实际问题上，工具只作为过程中的一个环节出现。
+把 MP4 录屏或 `.screenstudio` 源工程、演示素材、原声和 BGM 组织成两阶段视频交付：先提供可交互的 Remotion Studio 与字幕审校版本，再以用户批准的 SRT 生成归档母版和平台文件；同时交付剪辑清单、横竖版包装、正式封面图片和可回读的质检报告。叙事重点放在真实工作流和实际问题上，工具只作为过程中的一个环节出现。
 
 ## Triggers
 
@@ -36,9 +40,11 @@ metadata:
 - 用户说“把这段录屏剪成视频号成片，保留最后有声音的成果段”。
 - 用户说“压缩上传卡顿、加 BGM、做 16:9 封面，并给我质检报告”。
 - 用户希望把长录屏整理成有开场、问题、操作证据和最终结果的短视频。
+- 用户提供 `.screenstudio` 源工程，希望重新控制摄像头位置、鼠标/快捷键、背景、音乐和画面包装。
+- 用户要求结合 Remotion 做动画、转场、可视化解释、专业字幕、横竖版和封面。
 - 用户说“把已经录了几期的素材、work 和成片按期整理，后面还要持续做这个栏目”。
 - 用户说“先给我内嵌 SRT 的 MKV，我用 Subtitle Edit 改完再出最终成片”。
-- 用户说“把封面当第一帧”“开头停一下再进正片”——要的是开场静帧，它与封面是两个交付物，且是渲染的前置条件，见 Step 1.5。
+- 用户明确说“把封面当第一帧”或“开头停一下再进正片”时，才启用可选开场静帧；否则直接跳过，不再提问。
 - User asks to create a publish-ready video from a screen recording while preserving the original result audio.
 - User asks for an opening still frame before the video body starts.
 
@@ -47,7 +53,7 @@ metadata:
 - 用户只要生成标题、正文或社交平台文案；交给文案或内容策略能力。
 - 用户只要学习字幕、词汇注释或 ASS 人物卡；交给 `lov-subtitle-freedom-skill`。
 - 用户只要章节进度条、透明章节层或剪映章节包；交给 `lov-video-chapter`。
-- 用户已经有字幕批准后的平台成片，只要求上传并回读发布状态；交给 `lov-publish-wechat-channels`。
+- 用户已经有字幕批准后的平台成片，只要求上传并回读发布状态；交给 `lov-media-publisher`。
 
 ## User Profile (cross-session)
 
@@ -56,7 +62,6 @@ metadata:
 用户直接说出的长期剪辑偏好或品牌事实，通过 `scripts/profile_store.py record --confirm` 写回 Profile，并在结果中报告保存路径。源代码保持可移植，不写入个人绝对路径、凭据或临时素材位置。完整契约见 [`references/user-profile.md`](references/user-profile.md)。
 
 ## Skill Group Composition
-
 运行前阅读 [`references/skill-composition.md`](references/skill-composition.md)。相邻 Skill 只通过文件、JSON、字幕或成品视频交接，不作为此 Skill 的隐藏运行依赖。
 
 ## Workflow (MANDATORY)
@@ -64,13 +69,13 @@ metadata:
 **必须按以下顺序执行。**
 
 ### Step 0: 解析运行环境
-
 - 使用环境中的 `SKILL_DIR`；没有时从当前 Skill 上下文推断安装目录。
-- 先验证 `$SKILL_DIR/scripts/media_probe.py`、`$SKILL_DIR/scripts/timeline_check.py`、`$SKILL_DIR/scripts/audio_qc.py`、`$SKILL_DIR/scripts/check_opening_still.py`、`$SKILL_DIR/scripts/subtitle_gate.py`、`$SKILL_DIR/scripts/profile_store.py` 是否存在。
-- 再验证 `$SKILL_DIR/references/media-workflow.md`、`$SKILL_DIR/references/edit-manifest.md`、`$SKILL_DIR/references/audio-mix.md`、`$SKILL_DIR/references/cover-and-title.md`、`$SKILL_DIR/references/delivery-contract.md` 是否存在。
+- 先验证 `$SKILL_DIR/scripts/media_probe.py`、`timeline_check.py`、`audio_qc.py`、`check_opening_still.py`、`subtitle_gate.py`、`profile_store.py` 与 `iteration_plan.py` 是否存在。
+- 再验证 media workflow、edit manifest、audio mix、cover/title、delivery contract 与 [`references/iteration-performance.md`](references/iteration-performance.md)；Screen Studio / Remotion 项目还要读取 [`references/screen-studio-remotion-qc.md`](references/screen-studio-remotion-qc.md)。
 - 持续栏目或已有多期素材时，另外验证并读取 `$SKILL_DIR/references/project-workspace.md`。
-- 视频检查或渲染需要 `ffprobe` 与 `ffmpeg`。封面生成只在明确需要新图时启用 Pillow 或图像工具。
+- 视频检查或渲染需要 `ffprobe` 与 `ffmpeg`。发布或 `platform-ready` 且没有已批准封面时，新图是必需项：立即启动封面分支。
 - 永远不覆盖源视频、源音频或原字幕；输出先落到独立的 `deliverables` 或用户指定目录。
+- `.screenstudio` 是只读源工程包：不得原地改写 `project.json`、`recording/*.m4s`、transcript 或事件文件。
 
 手工运行脚本时：
 
@@ -81,7 +86,6 @@ export SKILL_DIR="/path/to/lov-media-creator"
 每次调用都解析 `context.profile`。若用户明确提出要长期保留的剪辑原则、音频偏好或品牌事实，调用 `scripts/profile_store.py record` 并带 `--confirm`，随后简短报告保存路径。
 
 ### Step 1: 明确输入与成片目标
-
 如果工作区里已经混有多期素材、根级 `work` / `output` 或不明归属的旧成片，先按
 [`references/project-workspace.md`](references/project-workspace.md) 做只读盘点，再移动文件。
 默认结构是**顶层按期、每期内按生命周期分层**；不要在“全部按期”和“全部按媒介”之间二选一。
@@ -89,32 +93,39 @@ export SKILL_DIR="/path/to/lov-media-creator"
 
 记录以下事实，不替用户臆造内容：
 
-1. 源视频、补充片段、原声轨、BGM、截图和已有封面；输入可为单个录屏或多个素材。
+1. 源视频、补充片段、原声轨、BGM、截图和已有封面；输入可为单个录屏、多个素材或一个 `.screenstudio` 源工程包。
 2. 目标平台、画幅、预期时长、受众、发布标题、封面文案和字幕是否需要烧录或平台 CC。
 3. 必须保留的证据段，尤其是最终结果播放、真实声音、状态回读或失败反馈。
-4. 交付文件：审校 MKV + 外置 SRT、批准后的归档母版、平台成片、封面、剪辑清单、音频/编码质检报告，以及可选的发布交接信息。
+4. 交付文件：Remotion Studio 主预览、批准后的归档母版、平台成片、封面、剪辑清单、音频/编码质检报告，以及可选的发布交接信息；只有需要 Subtitle Edit 修正字幕时，才增加审校 MKV + 外置 SRT。
 
-默认输出规格为 16:9、1920×1080、30fps、H.264、AAC 48kHz；明确请求或 Profile 有其他设置时，以当前请求为准。
+目标包含发布或 `platform-ready` 时默认 `cover_required=true`；复用匹配当前平台且已批准的封面，否则在标题钩子与素材稳定后并行生成。仅预览任务可暂缓；只有用户明确不要才记 `waived-by-user`。这与 `opening_still=false` 相互独立。
+
+跨平台任务默认以视频号为首个 production target：先制作、渲染并完整质检 9:16、1080×1920、
+30fps、H.264、AAC 48kHz 竖版；该文件达到 `platform-ready` 后，再从同一锁定时间轴派生并质检
+B 站 16:9、1920×1080 横版。两个全片渲染默认顺序执行，不并行争抢合成器、内存与媒体解码带宽；
+只有当前机器的短窗 benchmark 证明并行能缩短总墙钟时才可并行。明确请求或 Profile 有其他设置时，
+以当前请求为准。
+
+#### Screen Studio 源工程是一等输入
+
+输入是 `.screenstudio` 时，不先压成一个扁平 MP4。先只读解析 `project.json`、`recording-markers.json`、
+`transcripts/`、`recording/channel-*-*.m4s`、`mouseclicks-*.json` 与 `keystrokes-*.json`，按 channel 重建：
+
+- display：屏幕内容；
+- webcam：独立摄像头，可逐段选全屏、右下角、侧栏、并排或隐藏；
+- microphone：口播权威音轨；
+- system-audio：系统反馈与演示原声；
+- pointer/events：鼠标位置、点击与快捷键，用于 Remotion 的聚焦、缩放和提示动画。
+
+先把工程事实写入 source manifest，再生成工作区内的可重建代理轨；源工程包保持原位。任何 channel 缺失、近乎静音、时间戳异常或事件不完整都要记为源素材事实，不用其他轨伪造。
 
 **这是系列片的第 N 期（N>1）时，先读 [`references/series-template.md`](references/series-template.md)，
-再读前一期留下的工程代码。** 那份文件是每期都要过的成片标准（钩子、片名卡、片尾资源卡、
-章节进度条、字幕位置、气口处理、重点词、配乐同源、响度口径）。上一期的版式常量、配乐
-合成器、进度条实现都在它自己的仓库里，**复用不是重写**——直接 import 前作的脚本，只换数据。
-
+再读前一期留下的工程代码。** 那份文件是每期都要过的成片标准（开场策略、片尾资源卡、
+章节进度条、字幕位置、气口处理、重点词、配乐同源、响度口径）。复用前一期的版式常量、
+进度条实现与已确认 BGM 配置；**早期程序合成 BGM 已废弃**，不得 import 前作的配乐合成器。
 不做这一步的后果是可预期的：只做「删空档 + 烧字幕」就交付，会被判为粗糙初剪，然后整期重做。
-
-有一项不能默认、必须问：**封面是并列交付物，还是成片的第一帧**。它决定执行顺序
-（详见 Step 1.5），事后改主意等于重渲染，所以用 AskUserQuestion 一次问清，连同
-画幅一起确认：
-
-```text
-问：开头要不要停一帧静态画面？
-  A. 不要（默认）——封面只做主页/分享卡片，与渲染并行，之后换封面不用重渲染
-  B. 要——需要另做一张与成片同画幅（竖版通常 9:16）的首帧图，且必须先定稿
-```
-
-选 B 且现有封面画幅与成片不一致时，在这里就说清代价（另做一张同画幅首帧 / 接受裁切 /
-放弃首帧），不要等渲染完再谈。视频号的封面槽是 3:4，竖版成片通常 9:16，**默认就是不一致**。
+默认 `opening_still=false`：封面独立制作并与渲染并行，不再询问。只有用户主动要求视频内静态
+首帧时，才将 `opening_still=true` 写入运行记录，并在渲染前确认同画幅素材与适配方式。
 
 ### Step 1.5: 读取相邻能力与交接边界
 
@@ -122,29 +133,26 @@ export SKILL_DIR="/path/to/lov-media-creator"
 
 - 章节条：交给 `lov-video-chapter`，输入为已确认的成品或字幕，输出为章节项目/透明层。
 - 学习字幕：交给 `lov-subtitle-freedom-skill`，输入为成片或原字幕，输出为保持原时间轴的 SRT/ASS。
-- 视频号封面：交给 `lov-channels-cover`，输入为标题钩子与人像素材，输出为风格锁定的 `cover_3x4.png` / `cover_4x3.png` 与 `spec.json`。
-- 通用配图或非视频号封面：交给 `lov-image-creator`，输入为封面方向 JSON 或文字 brief，输出为 PNG/可编辑 HTML。
+- 视频号封面：发现 `lov-channels-cover` 时优先交接；未发现则用当前图像能力、`lov-image-creator` 或项目 Remotion `Cover` composition 生成实际槽位图片，不得跳过。
+- 通用配图或其他平台封面：交给 `lov-image-creator` 或当前图像能力，输入为封面方向 JSON 或文字 brief，输出为 PNG/可编辑 HTML。
 - 视频来源获取：交给 `lov-media-fetch`，输入为检索需求，输出为经过核验的本地素材。
-- 微信视频号发布：交给 `lov-publish-wechat-channels`，输入为字幕已批准且已质检的平台成片，输出为发布状态与回读证据。
-
+- 视频号 / B 站发布：交给 `lov-media-publisher`，输入为字幕已批准且已质检的平台成片，输出为终稿确认、发布状态与列表回读证据。
 本 Skill 负责最终成片的编辑判断、音频完整性和交付门禁；可选下游不得替代这些验收。
 
-#### 开场静帧：这一条会改变执行顺序
+#### 开场静帧：默认跳过，仅在用户主动要求时启用
 
 **封面和开场静帧是两个交付物，不是同一张图的两种用法。** 视频号把它们分给了不同场景：
 封面服务主页九宫格与分享卡片（2026-08-17 实测创建页只有一个槽，标签「个人主页和分享
 卡片(3:4)」），视频画面服务信息流全屏播放（竖版普遍 1080×1920）。平台本就不期待两者
 同比例。
-
-封面默认是**并列交付物**，可以在渲染之后再出，互不阻塞。但用户要求「开头停一下再进
+封面默认是**并列交付物**，应与渲染并行，互不阻塞。但用户要求「开头停一下再进
 正片」时，那一帧变成**渲染的前置条件**——它就是成片的第一帧，没定稿就没法渲染，改它
 等于重渲染。
-
-所以这一条必须在 Step 1 就问清（用 AskUserQuestion，不要替用户默认）：
+默认不询问并直接跳过；用户主动提出后再记录选择：
 
 | 用户选择 | 后果 |
 | --- | --- |
-| 不要开场静帧（默认） | 封面只做卡片，可与渲染并行，改封面不重渲染 |
+| 未主动要求开场静帧（默认） | 封面只做卡片，可与渲染并行，改封面不重渲染；不询问 |
 | 要 | 需另做一张与成片同画幅的图，先定稿；每次改它都要重渲染 |
 
 把 3:4 封面直接当 9:16 首帧要裁掉左右 25%，标题组必然被切到。这不是工具缺一个比例档，
@@ -158,7 +166,6 @@ export SKILL_DIR="/path/to/lov-media-creator"
 **不要在本 Skill 里用 scale/pad 硬凑**：补边或拉伸会毁掉第一印象，而且渲染完才看得出来。
 
 ### Step 2: 扫描素材并建立编辑清单
-
 先运行：
 
 ```bash
@@ -170,6 +177,22 @@ python3 "$SKILL_DIR/scripts/media_probe.py" \
 
 读取时长、分辨率、帧率、编码、音频声道、采样率和字幕流。长录屏先按真实内容找出“结果/承诺、问题、关键操作、证据、最终结果”几个节点，再写入 [`references/edit-manifest.md`](references/edit-manifest.md) 所定义的 EDL；不要按固定时长机械切段。
 
+`.screenstudio` 不能把目录直接传给 `media_probe.py`：先为 EDL 命中区间建立只随源素材失效的低码率代理分片，
+再逐轨 probe，并校验它们的起点、终点和时钟一致。麦克风编辑必须先解码为 48kHz PCM/WAV，随后从
+PCM 样本级寻址；禁止在每个片段上对 AAC/M4S 做 input-side seek，它会把切点吸附到压缩包边界，
+造成口水词重新出现、完整词被截断或说话卡顿。
+
+#### 口水词、重说与口误门禁
+
+先做保留语气的逐字转写，再识别独立的“啊 / 呃 / 嗯 / 额 / 那个”、未完成起句、同词回滚和
+“说错后立刻重说”的修正。只删不承载语义的部分；若一个音节同时可能是完整词的首尾，默认保留，
+直到相邻 PCM 片段和句义都证明可以删除。每个微切点至少检查：
+
+1. 前段结尾是完整词或自然停顿；
+2. 后段开头没有残留填充音，也没有丢失完整词；
+3. 拼接后的短窗逐字转写不再出现重复起句；
+4. 长窗 ASR 若与两个相邻短窗冲突，以可听原声和短窗证据为准，避免把模型幻觉当成口误。
+
 ```bash
 python3 "$SKILL_DIR/scripts/timeline_check.py" \
   --input WORK_DIR/edit-manifest.json \
@@ -180,21 +203,34 @@ python3 "$SKILL_DIR/scripts/timeline_check.py" \
 
 上传弹窗、等待、卡住的文件选择器等低信息段应被压缩到能交代状态的长度；若它们遮挡了真实结果，直接跳过。为最终结果和原声设置 `protected_audio: true`，后续所有剪辑与混音都不得误删。
 
+#### Step 2.5: 先规划本轮失效范围
+
+每轮先更新 `iteration-current.json` 的 `draft / locked / approved` 阶段和八类 revision token，再运行
+`iteration_plan.py plan`。只执行 `run`，复用 `skip`，尊重 `blocked`；字幕、布局、BGM、平台或封面微调
+不得重建无关媒体。状态格式与失效矩阵见 [`references/iteration-performance.md`](references/iteration-performance.md)。
+
 ### Step 3: 设计叙事、标题与封面
 
 阅读 [`references/media-workflow.md`](references/media-workflow.md) 与 [`references/cover-and-title.md`](references/cover-and-title.md)：
 
 - 主角是工作流解决的实际问题，以及“终于跑通”的证据；工具名称只在确实帮助理解时出现。
 - 保留信息差和悬念，但不虚构速度、权限、成功率或发布状态；“一键”“秒发”“完全自动”只有在有对应证据时才能使用。
-- 用户给出标题时原样尊重。标题与封面承担不同职责：标题说明事件，封面让人看出结果线索。
+- 用户给出封面主标题时原样尊重；封面只保留这个钩子与系列标识，不再补解释型副标题或泄底说明。
+- 封面需要人物时优先复用用户指定或 Profile/品牌资产中已确认的职业照；录屏摄像头抽帧只作回退，
+  且必须避开表情整理、半闭眼和口型中的帧。屏幕截图是可选辅助层，不为信息量强行加入。
+- 系列标识遵循版式模板并进入手机安全区，活跃度低于主标题；满宽底条可轻斜，但栏目文字保持
+  稳定字体与基线。主标题可按语义异字号破调，但须保持 Z 形阅读顺序，缩小后仍一眼读清。
 - 章节标题必须从该段真实口播、画面与结果证据中归纳，并在分幕数据里保留一句命名依据；
   不用“参与开源”“共创风格”这类过程词代替该幕真正讲的“背景”“自定义 Prompt”等主题。
 - 避免模板化的 AI 句式、空泛的“重新定义效率”和过量大字。封面优先展示状态、界面证据或前后对照。
 - 剪辑节奏先服务理解，再服务刺激；成果段出现后，隐藏解释性字幕和多余顶栏，让真实画面与原声完成收束。
 
-封面走 `lov-channels-cover` 时，标题钩子由那个 Skill 的门禁判定，本 Skill 不重复
-评分，也不绕过它改常量；本 Skill 只负责**封面声称的事实与成片是否一致**——封面上
-的数字、平台状态、结果承诺必须在片子里真的出现过。Step 1.5 选了要开场静帧时，那张图
+#### 开场先判别，再走自动或用户覆盖两条路径
+先审计清理后的原始开场，不默认加 Highlights 或片名卡。把决定写入 manifest 的 `opening`：
+1. **自动判别（默认 `strategy=auto`）**：第一句或第一个完整意群已经直接抛出具体问题、结果、冲突或代价，且没有试讲、寒暄或必要铺垫时，解析为 `direct`。从第一句有效语音开始，问题说清前不插 Highlights、片名卡或特效字幕；需要方向感时，只在完整问题后插短的 `post_problem_title`。短视频更偏向这条路径。原开场偏泛、铺垫长，且后文存在更强闭环时，才解析为 `highlights`，使用 2–4 个完整短句。
+2. **用户覆盖**：用户可显式设为 `direct` / `highlights`，并独立开关、改写或移动问题后标题。当前请求优先于 Profile 与自动判断；记录 `resolved_strategy`、`decision_origin` 和 `decision_reason`。
+走 `highlights` 时按语义与声学显著性选 6–15 秒闭环。SRT cue 只作**语义锚点，不是剪点**；用 PCM 保留完整词头和句尾，并对渲染片段跑短窗 ASR 与首尾试听；完整门禁见 QC reference。
+封面走 `lov-channels-cover` 时，标题钩子由那个 Skill 的门禁判定；走回退路径时沿用同一标题、系列与事实约束。本 Skill 负责**封面声称的事实与成片是否一致**——封面上的数字、平台状态、结果承诺必须在片子里真的出现过。标题钩子与人像/界面素材稳定后即并行出图，不等发布交接才补。Step 1.5 选了要开场静帧时，那张图
 必须在进入 Step 5 之前定稿。
 
 **`cover-brief.md` 只是计划，不是封面交付。** 一旦目标包含发布或 `platform-ready`，必须拿到
@@ -220,20 +256,56 @@ prompt、方向稿或生成脚本时，`creative_status` 仍是 `blocked-on-cove
 3. BGM 是氛围层，不是主角。有人声、点击反馈或最终视频播放时，降低 BGM；成果段需要听清原声时可暂时只保留原声。
 4. BGM 采用淡入淡出和 ducking，避免循环接缝、突兀起音与尾部截断。具体滤镜和参数见 [`references/audio-mix.md`](references/audio-mix.md)。
 5. 若源素材本身没有可用原声，标记这一事实，不用 BGM 冒充真实反馈。
-6. **系列片的配乐必须与前作同源**：import 前作的合成脚本，把段落表当数据重新绑定，
-   不要复制一份改。两期用不同音色 = 两个栏目。
-6b. **片中念到的三方产品要做 research 再贴回画面**（检索 → 官网 → 截 hero 区 → 画中画停
-   几秒）。流程、位置怎么量、以及 `$ego-browser` 的两个坑见
+6. **系列片默认使用已约定的 `Screen Studio Lo-fi / Bright Lounge`**：从已授权素材构建连续音乐床，
+   不再运行或复用前作的程序合成器、`make_music.py` 或同类生成脚本。素材缺失时阻塞并报告，
+   不得自动回退到程序合成或临时替代曲。
+6b. **片中念到的重点产品要做 research 再贴回画面，自研产品优先**（检索 → 官网 → 提炼当前定位
+   → 截 hero/品牌资产 → 画中画停 4.5–5.5 秒）。流程、位置怎么量、以及 `$ego-browser` 的坑见
    [`references/pip-research.md`](references/pip-research.md)。
 7. **重点词强调要设上限**：同一个词有次数上限、每行最多一处、半数句子都出现的高频词
    不进表；配套音效按「每 N 秒最多一次」稀释。满屏都是重点等于没有重点。
-8. **系列长视频每章正文前插入独立黑幕标题卡**：推荐 0.9–1.4s，显示“第 N 章 + 语义标题”；
-   卡片必须落在口播句界或 EDL 片段边界，期间暂停人声，可延续低声配乐和轻转场声。第一章也要有，
-   放在总片名卡之后、正文之前。插卡会改变后续字幕与章节时间码，必须由同一映射函数累计偏移。
+8. **系列长视频的章节卡服从开场策略**：知识传播类推荐 1.8–2.4s，显示“第 N 章 + 语义标题”；卡片必须落在口播句界或 EDL 片段边界，期间暂停人声，可延续低声配乐和轻转场声。`highlights`
+   路径可把第一章卡放在总片名卡之后；`direct` 路径可跳过第一章卡，避免打断已成立的开场，后续章卡照常。
+   插卡会改变后续字幕与章节时间码，必须由同一映射函数累计偏移。
 
-### Step 5: 先渲染字幕审校母版，再封装最终成片
+#### Screen Studio + Remotion 分阶段媒体架构
 
-字幕存在时默认执行两道门，**第一遍不生成 MP4，也不把文件称为最终成片**。
+`draft` 按 EDL 懒生成 source-scoped 低码率代理分片，不预转完整长源轨；字幕、布局和卡片只更新上层数据。
+`locked` 后才按 EDL 生成等长的 display、webcam、microphone、system-audio 连续母版；Remotion 每轨
+只挂一个连续媒体元素。`approved` 后才跑平台终版。长任务前先跑接缝、视觉或音频 canary，失败即停在局部。
+
+本期口播明显偏慢时，默认从 1.08×–1.15× 试剪并保持原音高；以句子可懂、辅音不损失和演示动作仍可跟上为门禁。横版锁定后用同一数据时间轴派生竖版，不另复制剪辑事实。
+
+**口播变速不得通过重采样实现。** `resample` / `resample_poly` 会同时改变时长和音高；对白与真实系统声只用 FFmpeg `atempo` / Rubber Band 等保音高 time-stretch，并按 `output_frames × samples_per_frame` 锁定样本数。验收要与 1.0× 源声 A/B，响度报告不能替代音高听感。
+
+竖版安全区按最终发布容器而非裸画布定义；视频号 1080×1920 首轮预留顶部约 160px 并以真机截图校准，章节栏、正文舞台和调试框共用一份常量，详见 [`references/screen-studio-remotion-qc.md`](references/screen-studio-remotion-qc.md)。
+**BGM 永远最后挂载。** 先锁定画面、口播、系统声、字幕与章节，再把已授权的
+`Screen Studio Lo-fi / Bright Lounge` 扩展为一条与最终时间轴
+等长、无缝交叉淡化的连续音乐床，最后在 Remotion 根层只挂一次并全局 ducking。不得让 BGM 跟着 EDL
+逐片段裁切、重复 mount 或在转场处重启。程序合成 BGM 是已废弃路径；不能取得约定曲目或授权来源时，
+记录 `audio_status=blocked-on-agreed-bgm`，不得自行生成或换曲。
+
+Remotion 同时负责按开场策略启用的动画标题、章节进度条、摄像头 B-roll 布局、可视化解释、专业字幕、转场、横竖版和封面 Composition。动画必须由 `useCurrentFrame()` 等时间轴驱动，不使用运行时 CSS 动画；最终时长、fps 和画幅由数据/Composition 注册统一计算。
+
+### Step 5: 以 Studio 为主预览；按阶段升级证据
+
+`draft` 先启动或复用 Studio，以代理、当前 EDL/字幕/布局和预览混音快速审片；只跑本轮受影响的
+局部 canary，不等待最终连续母版、最终混音、全片 ASR 或全轨完整解码。`locked` 后才切换到连续母版
+与最终混音，执行完整解码、全片 ASR、关键帧和响度检查。`approved` 后才渲染平台文件并做全量 QC。
+Remotion Studio 始终是画面、节奏、声音和字幕的主预览；MKV 只用于 Subtitle Edit 字幕交接。
+完整矩阵见 [`references/screen-studio-remotion-qc.md`](references/screen-studio-remotion-qc.md)。
+
+**Studio 通过不等于最终编码画面通过。** `OffthreadVideo` 预览可为 `<video>`、终版为 `<img>`；样式应落
+稳定 wrapper 或同时覆盖 `video, img`。终版须从**编码成片本身**抽摄像头代表帧联系表；详见 QC reference。
+
+**锁定后的主预览音频不得重新拼原始 stems。** 画面与对白锁定、BGM ducking 和整体响度处理完成后，先生成
+一条最终混音；主 Studio Composition 只挂载这一条，并与批准母版的音频同源或从中 stream copy。
+`microphone`、`system-audio` 与独立 BGM 轨只保留作诊断，不得同时留在主预览里重复混音。验收须
+记录最终混音的 SHA-256、LUFS-I、dBTP，并在 Studio 组件树确认只有一个音频实例。
+
+字幕存在时先在 Studio 中预览；需要作者用 Subtitle Edit 修正时才执行两道字幕门。批准前不生成
+平台 MP4，也不把文件称为最终成片。作者返回 SRT 后，必须在不覆盖作者文件的前提下将其同步回
+Remotion 字幕数据，刷新现有 Studio 并复核字幕、画面和声音。
 
 #### Step 5A: 生成无旁白硬字幕的画面母版
 
@@ -250,11 +322,12 @@ ffmpeg -y -hide_banner \
 
 若涉及多段画面、原声与 BGM，使用 `filter_complex` 显式映射视频与音频；不要依赖默认流选择。源素材保持原位。
 
-#### Step 5B: 封装审校 MKV
+#### Step 5B: 按需封装 Subtitle Edit 字幕修正 MKV
 
-把无旁白硬字幕的画面母版、最终音频和成片时间轴 SRT 封装为 MKV，同时把同一份 SRT 单独放在
+只有需要 Subtitle Edit 修正字幕时，才把无旁白硬字幕的画面母版、最终音频和成片时间轴 SRT
+封装为 MKV，同时把同一份 SRT 单独放在
 `deliverables/`。Subtitle Edit 可直接打开 MKV；外置 SRT 让作者无需抽轨就能校对。两者的
-SHA-256 必须同时写入报告。
+SHA-256 必须同时写入报告。这个 MKV 是字幕修正交换件，不是 Remotion 主预览，也不用于画面审片。
 
 ```bash
 python3 "$SKILL_DIR/scripts/subtitle_gate.py" review \
@@ -359,6 +432,9 @@ ffmpeg -v error -i REVIEW_OR_APPROVED_OUTPUT -f null -
 SubRip 字幕轨，并回抽与外置 SRT 逐条一致。目标响度参考 `-16 LUFS-I ±1.5`，True Peak 控制在
 `-1 dBFS` 以下；实际值以报告为准。
 
+最终 MP4 / MKV 另抽覆盖实际开场策略、`camera-full`、画中画、并排和收尾的代表帧联系表，确认脸部主体、
+裁切与 `object-position` 正确，无胡须或额头异常局部；证据必须来自编码文件，不来自 Studio / DOM。
+
 做了开场静帧时另外抽出第一帧目视确认，**不能以脚本退出码 0 代替看图**：
 
 ```bash
@@ -398,9 +474,7 @@ ffmpeg -y -v error -i REVIEW_OR_APPROVED_OUTPUT -vframes 1 DELIVERABLE_DIR/first
 | `opening_still_source` | 静帧图的文件路径与版本号 |
 | `opening_still_fit` | `match` / `crop:<裁掉比例>` / `pad`，以及停留秒数 |
 
-写清一条前提：**这版成片的第一帧绑定了这一版静帧图**，换图必须重渲染。静帧与封面是两个
-文件，应共用同一套视觉语言，否则观众在列表页看到的封面和点开后的第一帧像两个来源。
-
+写清一条前提：**这版成片的第一帧绑定了这一版静帧图**，换图必须重渲染。静帧与封面是两个文件，应共用同一套视觉语言，否则观众在列表页看到的封面和点开后的第一帧像两个来源。
 ## Validation
 
 完成前运行：
@@ -412,23 +486,13 @@ python3 "$SKILL_DIR/scripts/timeline_check.py" --help
 python3 "$SKILL_DIR/scripts/audio_qc.py" --help
 python3 "$SKILL_DIR/scripts/check_opening_still.py" --help
 python3 "$SKILL_DIR/scripts/subtitle_gate.py" --help
+python3 "$SKILL_DIR/scripts/iteration_plan.py" --help
 ```
 
 同时检查 `skill-card.yaml`、`skill-card.md`、`cases/cases.json` 和 `pricing-card.yaml`。至少保留一个真实 Input → Prompt → Output 案例，记录三项以上有证据的质量维度，并标明免费/付费渠道状态。
-
 ## Dependencies
 
 - Python 3.8+ 标准库；`PyYAML` 用于 Skill 结构验证。
 - FFmpeg 与 FFprobe 用于视频解码、转码、帧提取和音频质检。
 - 可选 Pillow、Playwright 或图像生成能力，用于新封面资产；已有封面时不强制安装。
-- 可选的字幕、章节和视频号发布 Skill 只通过交付文件交接，不是本 Skill 的安装依赖。
-
-## 通用反馈闭环
-
-用户在 Skill 驱动任务中提出修改意见时，继续当前产物前必须执行：
-
-1. 先判断意见是 `task-specific`（仅本次）还是 `reusable`（可跨任务复用）。
-2. `task-specific` 只修改当前任务，不改 Skill。
-3. `reusable` 先确定作用域：领域规则先更新对应 canonical Skill；适用于所有 Skill 的规则先更新共享规范。
-4. 完成规则更新、版本、lint 与分发核验后，再把修改应用到当前任务。
-5. `reusable` 修改会使此前的“确认”“继续”“发吧”失效；完成当前产物修改和回读后必须停下，等待用户下一步指示，不自动进入发布、提交或其他外部写入。
+- Screen Studio 源工程工作流需要 Node.js 与 Remotion；Remotion 只读取工作区代理轨，不修改源工程包。可选的字幕、章节和媒体发布 Skill 只通过交付文件交接，不是本 Skill 的安装依赖。

@@ -1,5 +1,11 @@
 {
   "schema": "lovstudio/media-edit/v1",
+  "iteration": {
+    "phase": "draft",
+    "state": "work/iteration-current.json",
+    "plan": "work/iteration-plan.json",
+    "timings": "work/iteration-timings.json"
+  },
   "source": {
     "video": "SOURCE_VIDEO",
     "duration_seconds": 120
@@ -10,6 +16,15 @@
     "width": 1920,
     "height": 1080,
     "fps": 30
+  },
+  "opening": {
+    "strategy": "auto",
+    "resolved_strategy": "highlights",
+    "decision_origin": "automatic",
+    "decision_reason": "原开场是泛化铺垫，后文存在更完整的结果证据",
+    "post_problem_title": {
+      "enabled": false
+    }
   },
   "segments": [
     {

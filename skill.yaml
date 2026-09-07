@@ -1,6 +1,6 @@
 schema: skill-manifest/v1
 id: lov-media-creator
-version: "0.9.1"
+version: "0.13.3"
 runtime: skill-runtime/v1
 context:
   profile:
@@ -57,7 +57,16 @@ context:
         question: 是否默认保护最终结果段的原声？
       - path: skills.lov-media-creator.records.subtitle_review_workflow
         required: false
-        question: 有字幕时是否默认先交内嵌可编辑 SRT 的 MKV，批准后再生成平台文件？
+        question: 需要 Subtitle Edit 修正字幕时，是否封装内嵌可编辑 SRT 的 MKV，并在批准后再生成平台文件？
+      - path: skills.lov-media-creator.records.preview_workflow
+        required: false
+        question: 是否以 Remotion Studio 为主预览，并只把 MKV 用于字幕修正交接？
+      - path: skills.lov-media-creator.records.incremental_iteration
+        required: false
+        question: 是否默认按 draft、locked、approved 三阶段复用缓存并只运行失效环节？
+      - path: skills.lov-media-creator.records.screen_studio_remotion_qc
+        required: false
+        question: Screen Studio 项目是否执行完整句、摄像头连续、官网产品卡和片尾资源页门禁？
   interaction:
     ask_missing: true
     max_questions: 1

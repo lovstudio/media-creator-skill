@@ -1,4 +1,4 @@
-# Skill Card — lov-media-creator
+# 天才剪辑师 · Video Studio · Skill Card
 
 This human-readable card mirrors `skill-card.yaml`. It is a release record, not
 an implementation note. A reviewer should understand the Skill without opening
@@ -6,7 +6,7 @@ its source.
 
 ## Description
 
-`lov-media-creator` turns screen recordings, demos, source audio and optional BGM into a review-first video delivery. It first returns an MKV with an editable SubRip track plus the external SRT; only a user-approved SRT can produce the archival master and platform file. It protects the important result audio, keeps waiting UI short, and returns subtitle, media, audio, creative and publish evidence as separate states.
+`lov-media-creator` turns flat recordings or Screen Studio source projects into a review-first Remotion delivery. It separates draft, locked and approved work, reuses source-scoped proxies across small revisions, and runs local canaries before long jobs. It preserves independent tracks, verifies micro-cuts, keeps chapter/camera state coherent, and mounts the final BGM mix only after picture and dialogue lock.
 
 ## Owner
 
@@ -28,6 +28,7 @@ Global, in a local Agent Skills environment on macOS, Linux or Windows.
 
 - Python 3.8+ and PyYAML for structural validation.
 - FFmpeg and FFprobe for inspection, rendering, frame extraction and audio QC.
+- Node.js and Remotion for Screen Studio source projects, Studio previews and motion packaging.
 - Optional Pillow, Playwright or an image tool when a new cover asset is requested.
 - User-provided media and an isolated output directory.
 
@@ -36,9 +37,13 @@ Global, in a local Agent Skills environment on macOS, Linux or Windows.
 - The final result or its original audio can be lost. Mark protected segments in the EDL, then spot-check the rendered result and run audio QC.
 - Waiting UI can dominate the cut. Keep only the state signal needed for comprehension.
 - Unverified speed or publish claims can enter the title or report. Separate rendered, uploaded, published and read-back states.
-- BGM can mask speech or feedback. Use ducking, fades and loudness checks; give the result audio priority.
-- ASR mistakes can be burned into a premature final export. Keep narration subtitles soft in the review MKV and block platform delivery until the user approves the SRT.
+- BGM can mask speech or feedback, and a second Studio-only stem mix can diverge from the approved master. Use the agreed, authorized `Screen Studio Lo-fi / Bright Lounge`; programmatic synthesis is deprecated. Apply ducking, fades and loudness checks, then mount the same single final mix in Studio.
+- Resampling can make accelerated dialogue sound unnaturally high or low. Use pitch-preserving time-stretch, lock the result to the frame-derived sample count, and A/B it against the 1.0x source.
+- ASR mistakes can be burned into a premature final export. Preview current subtitles in Remotion Studio; create a soft-subtitle MKV only for Subtitle Edit correction, and block platform delivery until the user approves the SRT.
 - Generic or misplaced chapter labels can misrepresent the content or cut speech in half. Derive each title from segment evidence, insert chapter cards only at sentence/EDL boundaries, and recompute every downstream timestamp.
+- Camera discontinuities and long explanatory overlays can hide the operation being taught. Keep the webcam continuous within a layout mode and return to the real screen as soon as interaction resumes.
+- Studio and final rendering can expose `OffthreadVideo` as different media tags. Style the stable wrapper or both `video` and `img`, then inspect a contact sheet extracted from the encoded deliverable.
+- Small subtitle, layout, BGM or cover changes can accidentally trigger a full five-track rebuild and render. Compare revision tokens with the iteration planner, reuse unaffected cache scopes, and run seam, visual or audio canaries before locked/final work.
 
 ## References
 
@@ -46,14 +51,16 @@ Global, in a local Agent Skills environment on macOS, Linux or Windows.
 - [Primary Skill instructions](SKILL.md)
 - [Media workflow](references/media-workflow.md)
 - [Delivery contract](references/delivery-contract.md)
+- [Screen Studio and Remotion QC](references/screen-studio-remotion-qc.md)
+- [Incremental iteration contract](references/iteration-performance.md)
 
 ## Skill Output
 
-The first output is an H.264/AAC/SubRip review MKV plus an external UTF-8 SRT. After explicit subtitle approval, the output adds an archival MKV, a platform-ready H.264/AAC MP4 or platform CC subtitle, and rendered cover images for every required platform slot. Validation covers subtitle round-trip integrity, streams, dimensions, frame rate, timeline overlap, decodability, loudness, true peak, protected result segments, cover dimensions, safe zones, edge bars, and visual inspection.
+The primary preview is Remotion Studio with the current authoritative edit state. Every round also produces an incremental run/skip/blocked plan and appends actual stage timings. Locked work upgrades the preview to continuous final media and the final mix. After explicit approval, the output adds archival and platform files plus rendered cover images. Validation covers invalidation regression tests, subtitle round-trip integrity, streams, dimensions, timeline overlap, decodability, loudness, protected results, cover safe zones, and visual inspection.
 
 ## Skill Version
 
-0.9.1
+0.13.3
 
 ## Ethical Considerations
 
@@ -71,8 +78,8 @@ The machine-readable card records four evidence-backed dimensions: editorial fit
 
 ### Pricing Basis
 
-See [`pricing-card.yaml`](pricing-card.yaml). The complete local workflow is a one-time CNY 9.9 paid entry on LovStudio; its boundary excludes cloud rendering, media licensing, account credentials and platform operation.
+See [`pricing-card.yaml`](pricing-card.yaml). The local Skill is free; its boundary excludes cloud rendering, media licensing, account credentials and platform operation.
 
 ### Distribution
 
-Paid channels: `lovstudio` is `live`; `workbuddy` and `skillpay` are `not-published`. The MIT-licensed source remains live on `github` as a free channel.
+Paid channels: `workbuddy` and `skillpay` are `not-published`. Free channels: `github` is `not-published`, and `lovstudio` is `local-only`. None of these states claims a live remote release.

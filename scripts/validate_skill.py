@@ -23,7 +23,7 @@ except ImportError:
 # `compatibility` 放顶层是这一组 Skill 的家族约定，维护工具从顶层读它做可移植性
 # 判定；只写在 metadata 下会被读成空字符串。
 FRONTMATTER_KEYS = {
-    "name", "description", "license", "allowed-tools", "compatibility", "metadata",
+    "name", "description", "license", "allowed-tools", "compatibility", "depends_on", "metadata",
 }
 TEXT_SUFFIXES = {".md", ".json", ".yaml", ".yml", ".txt", ".svg", ".py"}
 JUNK_NAMES = {"__pycache__", ".DS_Store"}
@@ -96,6 +96,12 @@ def validate_skill_file(path: Path, errors: list[str]) -> dict[str, Any] | None:
     unexpected = sorted(set(data) - FRONTMATTER_KEYS)
     if unexpected:
         errors.append(f"{path}: unsupported frontmatter keys: {', '.join(unexpected)}")
+
+    depends_on = data.get("depends_on", [])
+    if not isinstance(depends_on, list) or not all(
+        isinstance(item, str) and NAME_RE.fullmatch(item) for item in depends_on
+    ):
+        errors.append(f"{path}: depends_on must be a list of kebab-case Skill names")
 
     name = compact_text(data.get("name"))
     if not NAME_RE.fullmatch(name) or len(name) > 64:
@@ -411,6 +417,90 @@ def validate_composition_reference(skill_root: Path, errors: list[str]) -> None:
         errors.append(f"{path}: replace unresolved TODO or template placeholders")
 
 
+def validate_bgm_policy(skill_root: Path, errors: list[str]) -> None:
+    required = {
+        "SKILL.md": ("Screen Studio Lo-fi / Bright Lounge", "程序合成 BGM 已废弃"),
+        "README.md": ("Screen Studio Lo-fi / Bright Lounge", "程序合成路径已废弃"),
+        "references/audio-mix.md": ("Screen Studio Lo-fi / Bright Lounge", "blocked-on-agreed-bgm"),
+        "references/series-template.md": ("Screen Studio Lo-fi / Bright Lounge", "make_music.py"),
+        "references/screen-studio-remotion-qc.md": ("Screen Studio Lo-fi / Bright Lounge", "blocked-on-agreed-bgm"),
+    }
+    for relative, phrases in required.items():
+        path = skill_root / relative
+        if not path.is_file():
+            continue
+        text = read_text(path)
+        for phrase in phrases:
+            if phrase not in text:
+                errors.append(f"{path}: agreed BGM policy is missing '{phrase}'")
+
+    stale_rules = {
+        "SKILL.md": ("import 前作的合成脚本", "配乐合成器、进度条实现"),
+        "README.md": ("配乐合成器直接 import",),
+        "references/series-template.md": ("与前作同一套合成器", "直接 import 前作的合成脚本"),
+    }
+    for relative, phrases in stale_rules.items():
+        path = skill_root / relative
+        if not path.is_file():
+            continue
+        text = read_text(path)
+        for phrase in phrases:
+            if phrase in text:
+                errors.append(f"{path}: stale programmatic BGM rule remains: '{phrase}'")
+
+
+def validate_final_render_parity(skill_root: Path, errors: list[str]) -> None:
+    required = {
+        "SKILL.md": ("OffthreadVideo", "video, img", "编码成片本身"),
+        "README.md": ("video` / `img", "编码文件"),
+        "references/screen-studio-remotion-qc.md": ("Studio 与最终渲染可能使用不同媒体标签", "只剩胡须"),
+        "references/series-template.md": ("Studio 的媒体标签不能代表最终渲染", "video, img"),
+    }
+    for relative, phrases in required.items():
+        path = skill_root / relative
+        if not path.is_file():
+            continue
+        text = read_text(path)
+        for phrase in phrases:
+            if phrase not in text:
+                errors.append(f"{path}: final-render parity gate is missing '{phrase}'")
+
+
+def validate_incremental_iteration(skill_root: Path, errors: list[str]) -> None:
+    required = {
+        "SKILL.md": ("draft / locked / approved", "iteration_plan.py", "canary"),
+        "README.md": ("iteration_plan.py", "source-scoped", "canary"),
+        "references/iteration-performance.md": (
+            "lovstudio/media-iteration/v1",
+            "source-proxies",
+            "final-mezzanine",
+            "iteration-timings.json",
+        ),
+        "references/screen-studio-remotion-qc.md": (
+            "source-scoped",
+            "locked",
+            "approved",
+        ),
+        "references/delivery-contract.md": (
+            "iteration-plan.json",
+            "iteration-timings.json",
+        ),
+    }
+    for relative, phrases in required.items():
+        path = skill_root / relative
+        if not path.is_file():
+            errors.append(f"{path}: incremental iteration resource is required")
+            continue
+        text = read_text(path)
+        for phrase in phrases:
+            if phrase not in text:
+                errors.append(f"{path}: incremental iteration contract is missing '{phrase}'")
+
+    script = skill_root / "scripts" / "iteration_plan.py"
+    if not script.is_file():
+        errors.append(f"{script}: incremental iteration planner is required")
+
+
 def validate_kit(root: Path, skill_names: set[str], errors: list[str]) -> None:
     manifest = root / "kit.yaml"
     if not manifest.exists():
@@ -539,6 +629,9 @@ def validate_source(root: Path, errors: list[str]) -> None:
 
     validate_hygiene(root, errors)
     validate_local_references(root, errors)
+    validate_bgm_policy(root, errors)
+    validate_final_render_parity(root, errors)
+    validate_incremental_iteration(root, errors)
 
 
 def main() -> int:

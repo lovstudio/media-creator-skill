@@ -1,19 +1,126 @@
 # Changelog
 
-## [0.9.1] - 2026-08-24
+## [0.13.3] - 2026-09-07
 
 ### Fixed
 
-- make delivered review MKV and SRT paths immutable author-owned inputs
-- require `approve --expect-edits` when the author says subtitles were edited
-- record review and approved subtitle hashes, timestamps, cue counts, and change state
-- require explicit author-SRT migration after timeline changes and frame proofs for burned-in platform files
+- 中文展示名由「视频工坊」改为用户指定的「天才剪辑师」，同步 SKILL、README 和 Skill Card；保留英文名、调用 ID 与能力契约。
 
-## [0.9.0] - 2026-08-24
+## [0.13.2] - 2026-09-07
 
 ### Added
 
-- add the shared feedback-classification and approval-invalidation gate used by every LovStudio Skill
+- 统一展示名为「视频工坊」，保持调用 ID 与能力契约。
+
+## [0.13.1] - 2026-09-01
+
+### Fixed
+
+- prioritize video channel platform renders
+- render and fully QC video channel 9:16 before deriving Bilibili 16:9
+- run full platform renders sequentially unless a short-window benchmark proves parallel is faster
+
+## [0.13.0] - 2026-09-01
+
+### Added
+
+- add a machine-readable incremental iteration planner and wall-clock timing recorder
+- split production into draft, locked, and approved phases with explicit cache scopes
+- add seam, visual, and audio canaries before long-running final work
+
+### Changed
+
+- keep source proxies stable across EDL, subtitle, layout, BGM, platform, and cover revisions
+- defer full continuous mezzanines, final mix, full-track ASR, final render, and full QC to their phase gates
+
+## [0.12.2] - 2026-08-31
+
+### Fixed
+
+- Generate platform covers by default for publish-ready runs
+- Separate the always-on platform cover branch from the disabled-by-default opening still
+- Fall back to available image tooling or Remotion when lov-channels-cover is unavailable
+
+## [0.12.1] - 2026-08-31
+
+### Changed
+
+- choose between direct cold open and highlight montage before building the opening
+- keep direct openings free of pre-roll titles, while allowing an optional title after the problem statement
+- let the current request override `auto`, `direct`, `highlights`, and post-problem title settings
+
+## [0.12.0] - 2026-08-30
+
+### Added
+
+- add final-render parity gates
+- treat subtitle cues as semantic anchors and verify complete rendered hook sentences
+- cover OffthreadVideo video/img divergence and require encoded webcam contact-sheet review
+
+## [0.11.0] - 2026-08-29
+
+- deprecate and prohibit the early programmatic BGM synthesis workflow
+- make the authorized `Screen Studio Lo-fi / Bright Lounge` the default agreed BGM
+- block audio delivery when the agreed asset is unavailable instead of synthesizing or silently substituting music
+
+## [0.10.8] - 2026-08-28
+
+- require the primary Remotion Studio composition to mount one final mix that is source-identical to the approved master audio
+- keep raw microphone, system-audio, and BGM stems for diagnostics instead of rebuilding a second delivery-preview mix
+- add Studio component-tree, loudness, peak, and audio-hash verification for preview parity
+
+## [0.10.7] - 2026-08-28
+
+- make Remotion Studio the primary picture, audio, BGM, and subtitle preview surface
+- limit MKV generation to Subtitle Edit subtitle-correction handoff and archival master use
+- require author-corrected SRT to be synchronized back into Remotion Studio before approval
+- skip the opening-still question by default; only enable it when the user explicitly requests a video-internal still
+
+## [0.10.6] - 2026-08-28
+
+### Fixed
+
+- require pitch-preserving time-stretch for accelerated dialogue and real system feedback
+- forbid resampling-based speed changes, lock transformed audio to frame-derived sample counts, and require source-versus-output A/B listening
+
+## [0.10.5] - 2026-08-26
+
+### Fixed
+
+- respect vertical platform chrome safe areas
+- calibrate iPhone and WeChat top overlays with real-device screenshots and one shared Remotion inset
+
+## [0.10.4] - 2026-08-26
+
+### Fixed
+
+- stabilize series marker hierarchy
+- keep full-width series bars typographically restrained and allow readable serif selection from the series profile
+
+## [0.10.0] - 2026-08-26
+
+### Added
+
+- harden Screen Studio and Remotion review workflow
+- verify complete sentence boundaries with local and full-track ASR
+- keep all chapter titles visible and remove teaser kickers from chapter cards
+- add camera continuity, official-site product cards, resource index, and fresh Studio playback gates
+
+## [0.9.0] - 2026-08-26
+
+- promote `.screenstudio` bundles to first-class, read-only source projects with independent display, webcam, microphone, system-audio, pointer and keystroke tracks
+- require sample-accurate PCM dialogue editing and adjacent-seam checks for fillers, false starts and self-corrections
+- rank opening highlights with semantic conflict/result signals plus acoustic emphasis
+- use one continuous media element per track in Remotion and mount one equal-duration BGM bed only after picture/dialogue lock
+- make horizontal the primary composition and add a vertical composition by default when the locked cut is under ten minutes
+- add a Remotion Studio preview gate before subtitle approval and platform rendering
+
+## [0.8.3] - 2026-08-23
+
+- make delivered review MKV paths immutable and require a new review version on reruns
+- add `approve --expect-edits` so declared author edits cannot silently collapse back to the review baseline
+- record review/approved subtitle hashes, mtimes, cue counts, and change state in approval reports
+- require explicit author-SRT migration after timeline changes and frame proofs for burned-in platform files
 
 ## [0.8.2] - 2026-08-23
 

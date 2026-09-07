@@ -1,8 +1,18 @@
-# lov-media-creator
+# 天才剪辑师 · Video Studio
 
-![Version](https://img.shields.io/badge/version-0.9.1-CC785C)
+![Version](https://img.shields.io/badge/version-0.13.3-CC785C)
 
-把录屏和演示素材整理成两阶段交付：先做内嵌可编辑 SRT 的 MKV 审校母版，再以批准字幕生成归档母版、平台文件和正式封面图片；同时保留关键原声，完成 BGM 混音、编码检查和交付报告。
+把 MP4 或 `.screenstudio` 源工程整理成两阶段交付：先做 Remotion Studio 与字幕审校版本，再以批准字幕生成归档母版、平台文件和正式封面图片。源工程模式保留独立屏幕、摄像头、麦克风、系统声、鼠标和快捷键事件；跨平台任务先完成并质检视频号 9:16，再顺序派生 B 站 16:9。
+
+麦克风先解码为 PCM 再做样本级口水词/口误剪辑。`draft` 只为 EDL 命中区间懒生成 source-scoped 代理分片，不预转完整长源轨；`locked` 后才生成最终连续媒体与混音，`approved` 后才全片渲染。字幕、布局或 BGM 微调通过差异化失效与局部 canary 验证，不再触发五轨和整片重跑。BGM 固定使用已授权的 `Screen Studio Lo-fi / Bright Lounge`；早期程序合成路径已废弃。
+口播加速使用保持原音高的 time-stretch，禁止用重采样改变对白时长。
+
+Screen Studio 模式还执行双层语义门禁：每个高风险切点做局部短窗 ASR，最终连续人声再做全片 ASR；
+章节导航全程展示全部宏观章节，官网产品卡与片尾资源索引都是正式包装的一部分。
+
+竖版按最终发布容器而不是裸画布计算安全区：视频号默认先预留顶部约 160px，避开 iPhone
+刘海 / 灵动岛状态栏与微信导航；再用真实手机截图校准。章节导航、标题、网址和关键控件不得进入
+遮挡区，背景画面可以延伸到边缘。
 
 ## 安装
 
@@ -25,28 +35,48 @@ npx skills add "$SKILL_SOURCE_DIR"
 
 > 把这段录屏剪成视频号成片，保留最后有声音的成果段；第一遍只给我内嵌 SRT 的 MKV 和外置 SRT，我用 Subtitle Edit 改完确认后，再生成平台 MP4。
 
-输入是源视频、可选 BGM 和明确的关键证据段；第一阶段输出审校 MKV + 外置 SRT，第二阶段才输出批准字幕归档母版、平台成片、EDL、各平台槽位的正式封面图片、质检 JSON 和交付报告。
+输入是源视频、可选 BGM 和明确的关键证据段；Remotion Studio 是主预览。需要 Subtitle Edit
+修正字幕时，额外输出审校 MKV + 外置 SRT；第二阶段才输出批准字幕归档母版、平台成片、EDL、
+各平台槽位的正式封面图片、质检 JSON 和交付报告。
 
 ## 字幕审校门
 
-有字幕时，`review` 阶段的画面不烧旁白字幕，只把 SRT 作为 MKV 的默认 SubRip 轨封装；状态是
+Remotion Studio 负责画面、节奏、声音、BGM 与当前字幕的主预览。只有需要 Subtitle Edit 修正字幕时，
+`review` 阶段才把 SRT 作为 MKV 的默认 SubRip 轨封装；状态是
 `review-ready / awaiting-review`。作者可在 Subtitle Edit 中改文字、断句和时间码。只有明确确认后，
-`approve` 阶段才以 stream copy 替换字幕轨生成归档 MKV，并按平台生成 MP4 或平台 CC 字幕。
-
-审校 MKV/SRT 交给作者后不再覆盖原路径；用户明确说已经改过字幕时，`approve --expect-edits`
-会拒绝与审校基线完全相同的 SRT，并在报告中记录两份字幕的哈希、时间和差异状态。
+先把作者 SRT 同步回 Remotion 预览复核，`approve` 阶段才以 stream copy 替换字幕轨生成归档 MKV，
+并按平台生成 MP4 或平台 CC 字幕。
 
 ```bash
 python3 scripts/subtitle_gate.py review --help
 python3 scripts/subtitle_gate.py approve --help
 ```
 
-MKV 是内部审校与归档容器。即使平台允许上传 MKV，也不等于会保留内嵌字幕轨；平台交付默认使用
+MKV 是 Subtitle Edit 字幕修正与归档容器，不是通用预览。即使平台允许上传 MKV，也不等于会保留内嵌字幕轨；平台交付默认使用
 兼容性更稳的 H.264/AAC MP4，字幕按平台选择 CC 或批准后烧录。
+
+## 快速迭代
+
+每轮先比较 `iteration-previous.json` 与 `iteration-current.json`，再按计划只运行失效 stage：
+
+```bash
+python3 scripts/iteration_plan.py plan \
+  --previous work/iteration-previous.json \
+  --current work/iteration-current.json \
+  --output work/iteration-plan.json
+```
+
+字幕或布局修改复用源代理；BGM 修改复用视频母版；封面修改不触碰视频。长任务前先跑局部 canary，
+并用 `iteration_plan.py record` 把实际墙钟写入 `iteration-timings.json`。完整契约见
+[`references/iteration-performance.md`](references/iteration-performance.md)。
 
 示例二：
 
 > Create a publish-ready 16:9 video from this screen recording. Keep the real result audio and separate rendered, audio, creative, and publish status.
+
+示例三：
+
+> 直接读取这个 `.screenstudio` 工程，做横版和十分钟内的竖版；摄像头保持连续，动画不要遮住实际操作，重要产品用官网信息卡，最后列出全部素材与网址。
 
 ## Profile 契约
 
@@ -57,12 +87,10 @@ MKV 是内部审校与归档容器。即使平台允许上传 MKV，也不等于
 **这是两个交付物**，平台把它们分给了不同场景，本来就不期待同比例：封面出现在主页九宫格
 和聊天分享卡片（视频号 3:4），视频画面出现在信息流全屏播放（竖版通常 9:16）。
 
-要不要在开头停一帧静态画面，在开始前就会问你，因为它改变执行顺序：
+默认不制作开场静帧，也不再询问；但发布或 `platform-ready` 任务默认生成正式封面，并与渲染并行。只有用户主动要求视频内静态
+首帧时，才另做一张与成片同画幅的图，把它作为渲染输入并执行画幅门禁。
 
-- **不要（默认）**：封面只做卡片，与渲染并行，之后换封面不用重渲染。
-- **要**：需另做一张与成片同画幅的图，它成为渲染的输入，必须先定稿，改它等于重渲染。
-
-视频号封面交给 `lov-channels-cover` 出图；开场静帧不是它的一个比例档，把 3:4 封面当
+视频号封面优先交给可用的 `lov-channels-cover`；未安装时回退到当前图像能力、`lov-image-creator` 或项目 Remotion `Cover` composition，不得把缺口拖到发布阶段。开场静帧不是它的一个比例档，把 3:4 封面当
 9:16 首帧要裁掉左右 25%，标题组必然被切到。选「要」时，本 Skill 在渲染前跑
 `scripts/check_opening_still.py` 判画幅，不一致时默认退出码 1，逼你显式选裁切、补边，
 或另做一张同画幅的图，而不是渲染几分钟后从画面里发现。
@@ -70,11 +98,19 @@ MKV 是内部审校与归档容器。即使平台允许上传 MKV，也不等于
 ## 交付质量门
 
 - 成片可解码，画幅、帧率、编码和音频流符合目标平台。
-- 审校 MKV 恰有一个默认 SubRip 字幕轨，回抽后与外置 SRT 逐条一致；批准前不生成平台文件。
+- Studio 是主预览，加载当前权威字幕与最终音频；需要 Subtitle Edit 时，审校 MKV 恰有一个默认 SubRip 字幕轨，回抽后与外置 SRT 逐条一致；批准前不生成平台文件。
 - 最终结果段连续且有原声；BGM 不遮挡人声或关键反馈。
-- 章节标题由该幕实际内容证据归纳；系列长视频每章正文前有独立黑幕标题卡，且不切进一句话。
+- 章节标题由该幕实际内容证据归纳；知识传播类章卡默认留 1.8–2.4 秒，只显示章号和标题；顶部导航全程显示全部宏观章节。
+- 竖版章节导航、标题、网址和关键控件避开 iPhone 状态栏、刘海 / 灵动岛与平台顶部导航；安全区由统一常量驱动，并用平台实机截图复核。
+- 每个高风险切点做局部 ASR，最终连续人声做全片 ASR；不得残留独立口水词、错误重念或半句跳转。
+- 摄像头在同一种正文形态中保持连续；解释动画结束后及时恢复真实操作画面。
+- 开场先在 `auto` 模式判别：原片第一句已直接抛出问题或结果时直接开场，问题说清前不加 Highlights 或标题；原开场铺垫弱时才重组高光。用户可显式覆盖为 `direct` / `highlights`，并单独调整问题后标题。
+- 用户给出的字幕 cue 只作语义锚点；需要高光时用 PCM 保留完整词头与句尾，并对实际渲染后的片段复核。
+- Studio 与最终渲染可能分别使用 `video` / `img`；摄像头样式覆盖两者，终版从编码文件抽各布局联系表目视检查。
+- 自研或重点产品使用官网事实源制作 4.5–5.5 秒信息卡；片尾资源页列出名称、完整 URL 与 BGM 来源。
 - 上传弹窗、等待和卡顿只保留必要信息，不占据主体。
-- 封面与标题分别承担“主题说明”和“结果线索”，不把工具品牌做成叙事主角。
+- 封面只保留用户批准的钩子主标题与系列标识，不再叠加解释型副标题；人物优先复用已确认的品牌职业照。
+- 系列标识可用满宽底条但文字保持克制、稳定且低于主标题活跃度；主标题可按语义重音异字号破调，并通过信息流缩略图检查。
 - `cover-brief.md` 只算方向稿；发布型交付必须存在平台各槽位的真实封面图片，并通过尺寸、
   安全区、四边条带与目视检查，才能写 `cover_status=approved / creative_status=passed`。
 - 做了开场静帧时，抽出第一帧目视确认标题组完整、四边无黑条、音频没有整体前移。
@@ -83,9 +119,11 @@ MKV 是内部审校与归档容器。即使平台允许上传 MKV，也不等于
 
 ## 原子组合
 
-做系列片的第二期及以后，先读 [`references/series-template.md`](references/series-template.md)：钩子、片名卡、逐章黑幕标题卡、片尾资源卡、章节进度条、字幕位置、气口处理、重点词、配乐同源、响度口径，每期逐条过。前一期的版式常量与配乐合成器直接 import 复用，不重写。
+做系列片的第二期及以后，先读 [`references/series-template.md`](references/series-template.md)：开场分支、逐章黑幕标题卡、片尾资源卡、章节进度条、字幕位置、气口处理、重点词、配乐同源、响度口径，每期逐条过。前一期的版式常量与进度条实现可以复用；BGM 不复用程序合成器，统一使用约定的 `Bright Lounge`。
 
-每个新 Skill 都带有 [`references/skill-composition.md`](references/skill-composition.md)，记录相邻能力、文件级交接和 Single Skill 决策。章节、学习字幕、封面生成、媒体获取和视频号发布都保持可选，不作为隐藏依赖。
+`.screenstudio` + Remotion 项目另外执行 [`references/screen-studio-remotion-qc.md`](references/screen-studio-remotion-qc.md)，覆盖完整句、无静音钩子、摄像头连续性、官网产品卡、资源索引、连续 BGM 与 Studio 实播验收。
+
+每个新 Skill 都带有 [`references/skill-composition.md`](references/skill-composition.md)，记录相邻能力、文件级交接和 Single Skill 决策。相邻 Skill 保持可选；发布型任务的正式封面是必需交付物，专用能力缺失时走本地回退路径。
 
 ## 系列工作区
 
@@ -101,7 +139,7 @@ MKV 是内部审校与归档容器。即使平台允许上传 MKV，也不等于
 
 - [`skill-card.yaml`](skill-card.yaml) / [`skill-card.md`](skill-card.md)：用途、负责人、依赖、风险、输出与维度地图。
 - [`cases/cases.json`](cases/cases.json)：真实 Input → Prompt → Output 证据。
-- [`pricing-card.yaml`](pricing-card.yaml)：价值锚点、付费边界和复评条件。
+- [`pricing-card.yaml`](pricing-card.yaml)：价值锚点、免费边界和复评条件。
 
 ## 质量门
 
@@ -112,6 +150,7 @@ python3 scripts/timeline_check.py --help
 python3 scripts/audio_qc.py --help
 python3 scripts/check_opening_still.py --help
 python3 scripts/subtitle_gate.py --help
+python3 scripts/iteration_plan.py --help
 ```
 
 ## 依赖

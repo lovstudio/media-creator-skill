@@ -1,6 +1,6 @@
 schema: lovstudio/skill-card/v1
-version: "0.9.1"
-description: "将录屏、演示视频和音频素材整理为先审校后发布的成片，第一阶段交付内嵌可编辑 SRT 的 MKV，字幕批准后再生成归档母版与平台文件。"
+version: "0.13.3"
+description: "将 MP4 或 Screen Studio 源工程整理为先 Studio/字幕审校、后发布的 Remotion 成片，保留独立屏幕、摄像头、麦克风、系统声与事件轨，并派生横竖版包装。"
 owner:
   team: "Media Creator Maintainers"
   contact: "Repository issue tracker"
@@ -15,7 +15,7 @@ use_case:
     - "扫描视频、音频和字幕流并建立媒体清单"
     - "按真实信息节点设计剪辑结构，并为每个平台槽位生成正式封面图片"
     - "混合原声与 BGM，并完成响度、峰值和解码质检"
-    - "封装可在 Subtitle Edit 中审校的 MKV，并以批准 SRT 生成平台文件"
+    - "以 Remotion Studio 为主预览；需要字幕修正时封装 Subtitle Edit MKV，并以批准 SRT 生成平台文件"
 deployment:
   geography: global
   environments:
@@ -25,6 +25,7 @@ requirements:
   dependencies:
     - "Python 3.8+"
     - "FFmpeg 与 FFprobe"
+    - "Screen Studio 源工程工作流需要 Node.js 与 Remotion"
     - "可选 Pillow、Playwright 或图像生成工具"
   runtime:
     - "源视频、音频和封面素材可读"
@@ -37,11 +38,21 @@ risks:
   - risk: "把未验证的速度、成功率或线上状态写进标题和报告。"
     mitigation: "将渲染、上传、发布和回读分开记录，只引用可回读证据。"
   - risk: "BGM 盖住人声、点击反馈或最终播放声音。"
-    mitigation: "使用 ducking、淡入淡出和响度门禁，并在成果段让原声优先。"
+    mitigation: "固定使用已授权的 Screen Studio Lo-fi / Bright Lounge；程序合成 BGM 已废弃。锁定画面与口播后构建等长音乐床并完成 ducking 与响度处理；Studio 主预览只挂载与批准母版同源的一条最终混音。"
+  - risk: "对 AAC/M4S 逐片段粗定位，或为每个片段重建媒体元素，造成口水词残留、完整词被切坏和播放卡顿。"
+    mitigation: "麦克风先解码为 PCM 再样本级剪辑；各 channel 生成一条连续代理轨，Remotion 只改变布局与包装。"
+  - risk: "字幕、布局、BGM 或封面微调仍重建五轨和整片，导致一轮反馈等待一到两小时。"
+    mitigation: "用 draft/locked/approved 阶段、source/timeline/presentation/audio/platform 缓存域和机器可执行失效计划，只运行被改动影响的 stage；长任务前先跑局部 canary。"
+  - risk: "用重采样加速对白，导致人声音高和音色一起改变。"
+    mitigation: "对白只使用保持音高的 time-stretch，并按成片帧数锁定精确样本数，交付前与 1.0× 源声 A/B 抽听。"
   - risk: "把 ASR 初稿字幕烧进第一版，导致校对后只能全片返工，或误把审校版发布。"
-    mitigation: "第一遍只交软字幕 MKV + 外置 SRT；用户批准前阻断最终封装与发布交接。"
+    mitigation: "先在 Remotion Studio 预览当前字幕；需要修正时才交软字幕 MKV + 外置 SRT，用户批准前阻断最终封装与发布交接。"
   - risk: "章节标题概括失真，或黑幕标题卡切进一句话并造成音画字幕错位。"
     mitigation: "用该幕真实内容证据命名，标题卡只落在句界/EDL 边界，并用统一累计偏移重算字幕与全部时间码。"
+  - risk: "摄像头无解释地消失、解释动画覆盖真实操作，或产品介绍只剩口播而缺少可识别信息。"
+    mitigation: "正文布局保持摄像头连续；操作恢复时立即退出动画；重点产品使用官网事实源、完整域名和限时信息卡。"
+  - risk: "Studio 中摄像头正常，但最终渲染把 OffthreadVideo 换成 img，导致裁切样式失效并只剩脸部局部。"
+    mitigation: "媒体样式覆盖稳定 wrapper 或同时覆盖 video/img；终版从编码文件抽取全部摄像头布局联系表并目视验收。"
   - risk: "只有封面 brief 或生成日志，却把发布交付误报为完成。"
     mitigation: "每个平台槽位都要求真实 PNG/JPEG，并逐张检查尺寸、安全区、四边条带和实际画面；只有用户批准后才能通过 creative gate。"
 references:
@@ -51,12 +62,19 @@ references:
     path: "references/media-workflow.md"
   - title: "Audio mix guidance"
     path: "references/audio-mix.md"
+  - title: "Screen Studio and Remotion QC"
+    path: "references/screen-studio-remotion-qc.md"
+  - title: "Incremental iteration contract"
+    path: "references/iteration-performance.md"
 output:
   types:
-    - "soft-subtitle review MKV and external SRT"
+    - "Remotion Studio primary preview with current authoritative subtitles and final audio"
+    - "optional soft-subtitle correction MKV and external SRT for Subtitle Edit"
     - "approved archival MKV and platform-ready MP4"
     - "rendered and approved cover image for every required platform slot"
     - "edit manifest and quality reports"
+    - "incremental iteration plan and wall-clock timing report"
+    - "Remotion Studio preview plus horizontal and, when under 10 minutes, vertical compositions"
   formats:
     - "H.264/AAC/SubRip MKV"
     - "H.264/AAC MP4"
@@ -76,6 +94,9 @@ output:
     - "timeline overlap check"
     - "loudness and true-peak report"
     - "manual spot check of protected result segments"
+    - "literal ASR and adjacent-PCM checks around filler and self-correction cuts"
+    - "full-track ASR, continuous-camera, product-card, resource-index, and fresh Studio console checks"
+    - "incremental invalidation regression tests and per-stage wall-clock evidence"
     - "embedded SubRip extraction and cue-by-cue round-trip validation"
     - "visual inspection of each rendered cover plus dimensions, safe-zone, and edge-bar checks"
   description: "输出文件与证据报告共同构成交付物；线上发布状态只有在真实回读后才成立。"
@@ -102,21 +123,21 @@ dimensions:
     evidence: "真实案例记录视频号对象 ID、回读状态 status=1、isPostProcessSuccess=true、isPostHasPosted=true，并最终标记 published。"
     score: "evidence-backed"
 pricing:
-  model: one_time
+  model: free
   currency: CNY
-  list_price_cny: 9.9
-  basis: "CNY 9.9 是完整本地媒体制作工作流的一次性低门槛入口价，价值来自可复用的媒体清单、FFmpeg 操作规范、原声保护规则和质检脚本；它不是定制执行或成本回收价。"
-  boundary: "包含本地制作指令、探测/时间线/音频质检脚本和交付模板；不包含云端渲染、素材版权、平台账号或发布代操作。"
-  review_trigger: "首发 30 天、100 次付费兑换、版本变化，或平台规范与单买家支持成本明显变化时复评。"
-  confidence: medium
+  list_price_cny: 0
+  basis: "本地 Skill 通过可复用的媒体清单、FFmpeg 操作规范、原声保护规则和质检脚本降低重复剪辑与返工成本。"
+  boundary: "免费范围包含本地制作指令、探测/时间线/音频质检脚本和交付模板；不包含云端渲染、素材版权、平台账号或发布代操作。"
+  review_trigger: "当新增平台编码要求、云端渲染服务或持续维护成本，重新评估是否拆出付费执行服务。"
+  confidence: internal
 distribution:
   paid:
-    - channel: lovstudio
-      status: live
     - channel: workbuddy
       status: not-published
     - channel: skillpay
       status: not-published
   free:
     - channel: github
-      status: live
+      status: not-published
+    - channel: lovstudio
+      status: local-only
