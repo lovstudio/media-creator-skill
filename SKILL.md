@@ -5,7 +5,7 @@ description: >
   Use when editing recordings or .screenstudio projects into review or publish-ready videos.
 license: MIT
 compatibility: >
-  Portable Agent Skills format. Requires Python 3.8+ and FFmpeg/FFprobe.
+  Portable Agent Skills format. Requires Python 3.8+ and FFmpeg/FFprobe; narrative BGM scoring gates need numpy, and the intelligibility gate needs mlx-whisper or openai-whisper.
   Screen Studio source-project integration additionally requires Node.js and Remotion.
   Publish-ready runs require an image tool or a Remotion Cover composition for cover assets.
   视频号封面优先交给可用的 `lov-channels-cover`；缺失时必须回退，开场静帧仍默认关闭。
@@ -13,7 +13,7 @@ depends_on:
   - lov-branding-consistency
 metadata:
   author: contributors
-  version: "0.14.1"
+  version: "0.15.0"
   card_standard: lovstudio/skill-card/v1
   tags:
     - media-production
@@ -25,7 +25,7 @@ metadata:
     - opening-still
     - screen-studio
     - remotion
-  compatibility: "Python 3.8+, FFmpeg/FFprobe, optional Pillow or an image tool for cover assets."
+  compatibility: "Python 3.8+, FFmpeg/FFprobe, numpy for narrative BGM gates, optional Whisper, Pillow or an image tool for cover assets."
 ---
 
 # 天才剪辑师 · Video Studio
@@ -38,7 +38,7 @@ metadata:
 
 - 用户说“从整场实录选出全部有传播价值的独立切片，剪得流畅并精包装”，包括未完整录下的分享与多人交流。
 - 用户说“把这段录屏剪成视频号成片，保留最后有声音的成果段”。
-- 用户说“压缩上传卡顿、加 BGM、做 16:9 封面，并给我质检报告”。
+- 用户说“压缩上传卡顿、加 BGM、做 16:9 封面，并给我质检报告”，或嫌 Vlog “bgm 太单一，按叙事混合多首配乐”。
 - 用户希望把长录屏整理成有开场、问题、操作证据和最终结果的短视频。
 - 用户提供 `.screenstudio` 源工程，希望重新控制摄像头位置、鼠标/快捷键、背景、音乐和画面包装。
 - 用户要求结合 Remotion 做动画、转场、可视化解释、专业字幕、横竖版和封面。
@@ -69,10 +69,9 @@ metadata:
 **先按成片目标分支。** 整场课程、活动或多人分享要独立切片时，执行 [`references/independent-clips.md`](references/independent-clips.md) 与 `scripts/clip_batch.py`：全片取舍 → 精确区间 → 字幕复核 → 连续混音 → 锁定 → 批量包装 → 实际 MP4 验收。
 该分支不强制系列编号、章节卡、官网卡或片尾资源页；全片增强可交给 `lov-media-preprocessor` 并复用其已验证 handoff，不重复提亮。已有明确全自动审校授权时，记录真实代理审核与依据后继续，不能写成用户逐条听审；发布授权与平台回读仍交给发布能力。其他录屏/Screen Studio 流程按以下步骤执行。
 
-
 ### Step 0: 解析运行环境
 - 使用环境中的 `SKILL_DIR`；没有时从当前 Skill 上下文推断安装目录。
-- 先验证 `$SKILL_DIR/scripts/media_probe.py`、`timeline_check.py`、`audio_qc.py`、`check_opening_still.py`、`subtitle_gate.py`、`profile_store.py` 与 `iteration_plan.py` 是否存在。
+- 先验证 `$SKILL_DIR/scripts/media_probe.py`、`timeline_check.py`、`audio_qc.py`、`check_opening_still.py`、`subtitle_gate.py`、`profile_store.py` 与 `iteration_plan.py` 是否存在；叙事片多曲配乐另验证 `bgm_tracks.py`、`validate_cues.py`、`smr_check.py`、`score_mix.py`、`intelligibility.py`。
 - 再验证 media workflow、edit manifest、audio mix、cover/title、delivery contract 与 [`references/iteration-performance.md`](references/iteration-performance.md)；Screen Studio / Remotion 项目还要读取 [`references/screen-studio-remotion-qc.md`](references/screen-studio-remotion-qc.md)。
 - 持续栏目或已有多期素材时，另外验证并读取 `$SKILL_DIR/references/project-workspace.md`。
 - 视频检查或渲染需要 `ffprobe` 与 `ffmpeg`。发布或 `platform-ready` 且没有已批准封面时，新图是必需项：立即启动封面分支。
@@ -257,9 +256,9 @@ prompt、方向稿或生成脚本时，`creative_status` 仍是 `blocked-on-cove
 3. BGM 是氛围层，不是主角。有人声、点击反馈或最终视频播放时，降低 BGM；成果段需要听清原声时可暂时只保留原声。
 4. BGM 采用淡入淡出和 ducking，避免循环接缝、突兀起音与尾部截断。具体滤镜和参数见 [`references/audio-mix.md`](references/audio-mix.md)。
 5. 若源素材本身没有可用原声，标记这一事实，不用 BGM 冒充真实反馈。
-6. **系列片默认使用已约定的 `Screen Studio Lo-fi / Bright Lounge`**：从已授权素材构建连续音乐床，
-   不再运行或复用前作的程序合成器、`make_music.py` 或同类生成脚本。素材缺失时阻塞并报告，
-   不得自动回退到程序合成或临时替代曲。
+6. **系列片默认使用已约定的 `Screen Studio Lo-fi / Bright Lounge`**：从已授权素材构建连续音乐床，不再运行或复用前作的程序合成器、`make_music.py` 或同类生成脚本；素材缺失时阻塞并报告，不得回退到程序合成或临时替代曲。
+6a. **Vlog、旅行、纪录、宣传等叙事片不套系列默认**：用户给的曲库整体可用，不按其顺口点名的几首收窄，只以成片效果取舍；按章节与情绪混合多首，每条 cue 写明叙事理由，同语种歌词不压对白，字卡下默认避开歌词，留白要声明；人声与音乐不必互斥，按时刻选 clear / blend / feature，段落过渡留足气口。
+   `validate_cues.py`、`smr_check.py`、`intelligibility.py` 三道防听不清的客观门禁（数值是校准参考）与 `score_mix.py` 线性母带（`-3 dBTP`）见 [`references/audio-mix.md`](references/audio-mix.md) 的「叙事片多曲配乐」。
 6b. **片中念到的重点产品要做 research 再贴回画面，自研产品优先**（检索 → 官网 → 提炼当前定位
    → 截 hero/品牌资产 → 画中画停 4.5–5.5 秒）。流程、位置怎么量、以及 `$ego-browser` 的坑见
    [`references/pip-research.md`](references/pip-research.md)。
@@ -488,12 +487,13 @@ python3 "$SKILL_DIR/scripts/audio_qc.py" --help
 python3 "$SKILL_DIR/scripts/check_opening_still.py" --help
 python3 "$SKILL_DIR/scripts/subtitle_gate.py" --help
 python3 "$SKILL_DIR/scripts/iteration_plan.py" --help
+for s in bgm_tracks validate_cues smr_check score_mix intelligibility; do python3 "$SKILL_DIR/scripts/$s.py" --help >/dev/null; done
 ```
 
 同时检查 `skill-card.yaml`、`skill-card.md`、`cases/cases.json` 和 `pricing-card.yaml`。至少保留一个真实 Input → Prompt → Output 案例，记录三项以上有证据的质量维度，并标明免费/付费渠道状态。
 ## Dependencies
 
-- Python 3.8+ 标准库；`PyYAML` 用于 Skill 结构验证。
+- Python 3.8+ 标准库；`PyYAML` 用于 Skill 结构验证；叙事片配乐门禁与混音需要 `numpy`，可懂度门禁另需 `mlx-whisper` 或 `openai-whisper`，优先用已有的持久 venv 运行（见 audio-mix「运行环境」）。
 - FFmpeg 与 FFprobe 用于视频解码、转码、帧提取和音频质检。
 - 可选 Pillow、Playwright 或图像生成能力，用于新封面资产；已有封面时不强制安装。
 - Screen Studio 源工程工作流需要 Node.js 与 Remotion；Remotion 只读取工作区代理轨，不修改源工程包。可选的字幕、章节和媒体发布 Skill 只通过交付文件交接，不是本 Skill 的安装依赖。

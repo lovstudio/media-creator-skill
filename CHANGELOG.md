@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.15.0] - 2026-09-26
+
+### Added
+
+- 新增叙事片多曲配乐流程：Vlog、旅行、纪录与宣传片从用户整个曲库选曲，按章节与情绪混合多首，每条 cue 必须写叙事或情绪理由；录屏与知识系列仍默认 Bright Lounge。
+- 歌词门禁：与对白同语种的演唱歌词不得压在对白下（中文对白下不放中文歌词），歌词默认避开屏幕字卡，只有歌词本身是这一刻的意义时才标 lyric_feature；无 LRC 的曲目按歌词未知处理。
+- 混音意图：人声与音乐不必互斥，按时刻声明 clear / blend / feature，ducking 深度随意图 250 ms 渐变切换；留白写进 silences；段落过渡留气口，连续 3 张以上短字卡报 WARN。
+- 新增脚本 bgm_tracks.py、validate_cues.py、smr_check.py、score_mix.py、ducking.py、intelligibility.py：整库分析、cue 校验、按意图分档的语音频段 SMR、Whisper CER 对比纯人声底线（temperature 0、剔除重复循环幻觉），数值作为校准参考。
+- 混音引擎：150 ms look-ahead 双段 ducking（整体 -13 dB + 语音频段额外 -8 dB）与 look-ahead 峰值限幅；线性母带（限幅、ebur128 测 I/TP、单一静态增益），不用 loudnorm 做母带，母带留到 -3 dBTP 以吸收 AAC 编码后的峰值回升。
+- 运行环境说明：优先用已存在的持久 venv 运行 numpy / Whisper 脚本，不依赖可能被清理的 uv 缓存；skill.yaml 登记 bgm_multi_track Profile 记录。
+
 ## [0.14.1] - 2026-09-07
 
 ### Fixed

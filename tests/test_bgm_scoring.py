@@ -1,0 +1,205 @@
+from __future__ import annotations
+
+import importlib.util
+import sys
+import unittest
+from pathlib import Path
+
+SCRIPTS = Path(__file__).resolve().parents[1] / "scripts"
+
+
+def load(name: str):
+    spec = importlib.util.spec_from_file_location(name, SCRIPTS / f"{name}.py")
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+VALIDATE = load("validate_cues")
+INTEL = load("intelligibility")
+try:
+    import numpy as np
+    DUCKING = load("ducking")
+    SCORE_MIX = load("score_mix")
+except ImportError:  # the DSP tests need numpy; the gate logic tests do not
+    np = None
+    DUCKING = None
+    SCORE_MIX = None
+
+
+def track(duration=200.0, sung=(), instrumental=True):
+    return {"duration": duration, "loudness_db_per_s": [-30.0] * int(duration), "median_loudness_db": -30.0,
+            "sung_lines": list(sung), "instrumental": instrumental}
+
+
+def cue(cid, name, at, dur, track_in=0.0, **extra):
+    return {"id": cid, "track": name, "track_in": track_in, "at": at, "dur": dur,
+            "fade_in": 2.0, "fade_out": 2.0, "rationale": "scene reason", **extra}
+
+
+FILM = {"duration": 60.0, "dialogue_language": "zh", "voice_spans": [{"t0": 10.0, "t1": 20.0}],
+        "text_spans": [{"t0": 40.0, "t1": 45.0, "text": "card"}]}
+TRACKS = {"playable": {
+    "instr": track(),
+    "instr2": track(),
+    "instr3": track(),
+    "zh_song": track(sung=[{"t0": 0.0, "t1": 8.0, "text": "我们一起走", "lang": "zh"}], instrumental=False),
+    "ja_song": track(sung=[{"t0": 0.0, "t1": 8.0, "text": "そらへ", "lang": "ja"}], instrumental=False),
+    "unknown": {**track(), "instrumental": None},
+}, "unplayable": {"locked": {"reason": "Invalid data found when processing input"}}}
+
+
+def run(cues, silences=None, min_tracks=1, intents=None, film=FILM):
+    sheet = {"cues": cues, "silences": silences or [], "mix_intents": intents or []}
+    return VALIDATE.validate(sheet, TRACKS, film, min_tracks=min_tracks)
+
+
+class CueValidationTests(unittest.TestCase):
+    def test_clean_three_track_score_passes(self) -> None:
+        out = run([cue("a", "instr", 0, 22), cue("b", "instr2", 20, 22), cue("c", "instr3", 40, 20)], min_tracks=3)
+        self.assertEqual(out["errors"], [])
+        self.assertEqual(out["warnings"], [])
+
+    def test_same_language_lyrics_under_dialogue_is_an_error(self) -> None:
+        out = run([cue("a", "zh_song", 10, 50)])
+        self.assertTrue(any("lyrics under 'zh' dialogue" in e for e in out["errors"]))
+
+    def test_other_language_singing_under_dialogue_is_a_warning(self) -> None:
+        out = run([cue("a", "ja_song", 10, 50)])
+        self.assertEqual(out["errors"], [])
+        self.assertTrue(any("another language" in w for w in out["warnings"]))
+
+    def test_unknown_lyrics_under_dialogue_is_a_warning(self) -> None:
+        out = run([cue("a", "unknown", 0, 60)])
+        self.assertTrue(any("unknown" in w for w in out["warnings"]))
+
+    def test_lyrics_on_text_card_need_lyric_feature(self) -> None:
+        plain = run([cue("a", "instr", 0, 40), cue("b", "ja_song", 40, 20)])
+        self.assertTrue(any("on-screen text" in w for w in plain["warnings"]))
+        featured = run([cue("a", "instr", 0, 40), cue("b", "ja_song", 40, 20, lyric_feature=True)])
+        self.assertFalse(any("on-screen text" in w for w in featured["warnings"]))
+
+    def test_missing_rationale_is_an_error(self) -> None:
+        c = cue("a", "instr", 0, 60)
+        c["rationale"] = " "
+        self.assertTrue(any("rationale" in e for e in run([c])["errors"]))
+
+    def test_unplayable_track_reports_reason(self) -> None:
+        out = run([cue("a", "locked", 0, 60)])
+        self.assertTrue(any("Invalid data" in e for e in out["errors"]))
+
+    def test_three_concurrent_cues_is_an_error(self) -> None:
+        out = run([cue("a", "instr", 0, 60), cue("b", "instr2", 5, 50), cue("c", "instr3", 10, 40)])
+        self.assertTrue(any("sound at once" in e for e in out["errors"]))
+
+    def test_short_overlap_is_not_a_cross_fade(self) -> None:
+        out = run([cue("a", "instr", 0, 30.5), cue("b", "instr2", 30, 30)])
+        self.assertTrue(any("too short for a cross-fade" in w for w in out["warnings"]))
+
+    def test_undeclared_silence_warns_and_declared_silence_passes(self) -> None:
+        cues = [cue("a", "instr", 0, 20), cue("b", "instr2", 40, 20)]
+        self.assertTrue(any("not declared" in w for w in run(cues)["warnings"]))
+        declared = run(cues, silences=[{"t0": 20, "t1": 40, "reason": "summit, breath only"}])
+        self.assertFalse(any("not declared" in w for w in declared["warnings"]))
+
+    def test_single_track_score_warns_below_min_tracks(self) -> None:
+        out = run([cue("a", "instr", 0, 60)], min_tracks=3)
+        self.assertTrue(any("distinct tracks" in w for w in out["warnings"]))
+
+    def test_mix_intents_are_checked(self) -> None:
+        full = [cue("a", "instr", 0, 60)]
+        ok = run(full, intents=[{"t0": 10, "t1": 20, "intent": "blend", "reason": "arrival peak"}])
+        self.assertEqual(ok["errors"], [])
+        self.assertFalse(any("mix intent" in w for w in ok["warnings"]))
+        bad = run(full, intents=[{"t0": 10, "t1": 20, "intent": "loud"}])
+        self.assertTrue(any("unknown intent" in e for e in bad["errors"]))
+        overlap = run(full, intents=[{"t0": 10, "t1": 20, "intent": "blend", "reason": "x"},
+                                     {"t0": 15, "t1": 25, "intent": "feature", "reason": "y"}])
+        self.assertTrue(any("overlap" in e for e in overlap["errors"]))
+        no_reason = run(full, intents=[{"t0": 10, "t1": 20, "intent": "feature"}])
+        self.assertTrue(any("no reason" in w for w in no_reason["warnings"]))
+
+    def test_feature_intent_does_not_excuse_same_language_lyrics(self) -> None:
+        out = run([cue("a", "zh_song", 10, 50)], intents=[{"t0": 10, "t1": 20, "intent": "feature", "reason": "x"}])
+        self.assertTrue(any("lyrics under 'zh' dialogue" in e for e in out["errors"]))
+
+    def test_short_text_card_chain_warns(self) -> None:
+        cards = [(0.0, 4.0), (4.5, 8.0), (8.2, 12.0), (20.0, 30.0), (30.5, 34.0)]
+        self.assertEqual(VALIDATE.card_runs(cards), [[(0.0, 4.0), (4.5, 8.0), (8.2, 12.0)]])
+        film = {**FILM, "text_spans": [{"t0": a, "t1": b, "text": "card"} for a, b in cards]}
+        out = run([cue("a", "instr", 0, 60)], film=film)
+        self.assertTrue(any("short text cards back to back" in w for w in out["warnings"]))
+
+
+class IntelligibilityTests(unittest.TestCase):
+    def test_cer_ignores_punctuation(self) -> None:
+        self.assertEqual(INTEL.cer("你们为什么来转山？", "你们为什么来转山"), 0.0)
+        self.assertAlmostEqual(INTEL.cer("一二三四", "一二三"), 0.25)
+
+    def test_repetition_loop_is_flagged_not_scored(self) -> None:
+        self.assertTrue(INTEL.asr_loop("还有这个抓绒", "cangoicangoicangoicangoicango"))
+        self.assertFalse(INTEL.asr_loop("还有这个抓绒", "还有这个抓绒"))
+        rows = [{"sub": "一二三四", "asr": "一二三四", "cer": 0.0},
+                {"sub": "一二", "asr": "abababababababab", "cer": 7.0},
+                {"sub": "五六七八", "asr": "", "cer": 3.0}]
+        self.assertAlmostEqual(INTEL.mean_cer(rows), 0.5)
+
+    def test_parse_srt(self) -> None:
+        import tempfile
+        with tempfile.NamedTemporaryFile("w", suffix=".srt", delete=False, encoding="utf-8") as f:
+            f.write("1\n00:00:01,900 --> 00:00:03,220\n你们为什么\n来转山？\n\n2\n00:01:00,000 --> 00:01:02,500\n好\n")
+        cues = INTEL.parse_srt(f.name)
+        Path(f.name).unlink()
+        self.assertEqual(cues[0], (1.9, 3.22, "你们为什么来转山？"))
+        self.assertEqual(cues[1][0], 60.0)
+
+
+@unittest.skipIf(DUCKING is None, "numpy is not installed")
+class DuckingTests(unittest.TestCase):
+    def test_peak_limiter_holds_the_ceiling(self) -> None:
+        sr = DUCKING.SR
+        t = np.arange(sr) / sr
+        x = (0.2 * np.sin(2 * np.pi * 220 * t)).astype(np.float32)
+        x[sr // 2] = 0.99
+        y, gr = DUCKING.peak_limit(x, ceiling_db=-6.0)
+        self.assertLessEqual(float(np.abs(y).max()), 10 ** (-6.0 / 20) + 1e-4)
+        self.assertLess(gr, 0.0)
+
+    def test_duck_cuts_the_speech_band_more_than_the_lows(self) -> None:
+        sr = DUCKING.SR
+        t = np.arange(2 * sr) / sr
+        music = (0.1 * np.sin(2 * np.pi * 100 * t) + 0.1 * np.sin(2 * np.pi * 1000 * t)).astype(np.float32)
+        voice = np.zeros_like(music)
+        voice[sr // 2:] = 0.1 * np.sin(2 * np.pi * 300 * t[sr // 2:])
+        out, env = DUCKING.duck(music, voice, duck_db=-13.0, band_cut_db=-8.0)
+        seg = slice(int(1.5 * sr), 2 * sr - 1000)
+
+        def level(sig, hz):
+            spec = np.abs(np.fft.rfft(sig[seg]))
+            freqs = np.fft.rfftfreq(len(sig[seg]), 1 / sr)
+            return spec[np.argmin(np.abs(freqs - hz))]
+        low_cut = 20 * np.log10(level(out, 100) / level(music, 100))
+        band_cut = 20 * np.log10(level(out, 1000) / level(music, 1000))
+        self.assertGreater(float(env[seg].min()), 0.99)
+        self.assertAlmostEqual(low_cut, -13.0, delta=0.5)
+        self.assertAlmostEqual(band_cut, -21.0, delta=0.5)
+
+    def test_intent_ranges_set_lighter_duck_depths(self) -> None:
+        sheet = {"mix_intents": [{"t0": 1.0, "t1": 3.0, "intent": "blend", "reason": "x"}]}
+        self.assertEqual(SCORE_MIX.intent_at(sheet, 1.5, 2.5), "blend")
+        self.assertEqual(SCORE_MIX.intent_at(sheet, 2.8, 4.0), "clear")
+        p = {"duck_db": -13.0, "band_cut_db": -8.0}
+        duck, band = SCORE_MIX.depth_curves(sheet, 4 * DUCKING.SR, p)
+        sr = DUCKING.SR
+        self.assertAlmostEqual(float(duck[int(0.5 * sr)]), -13.0, places=3)
+        self.assertAlmostEqual(float(duck[int(2.0 * sr)]), SCORE_MIX.INTENTS["blend"][0], places=3)
+        self.assertAlmostEqual(float(band[int(2.0 * sr)]), SCORE_MIX.INTENTS["blend"][1], places=3)
+        edge = duck[int(0.9 * sr):int(1.2 * sr)]
+        self.assertLess(float(np.abs(np.diff(edge)).max()), 1.0)
+        self.assertEqual(SCORE_MIX.depth_curves({}, 10, p), (-13.0, -8.0))
+
+
+if __name__ == "__main__":
+    unittest.main()

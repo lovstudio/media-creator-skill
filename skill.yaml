@@ -1,6 +1,6 @@
 schema: skill-manifest/v1
 id: lov-media-creator
-version: "0.14.1"
+version: "0.15.0"
 runtime: skill-runtime/v1
 context:
   profile:
@@ -67,6 +67,9 @@ context:
       - path: skills.lov-media-creator.records.screen_studio_remotion_qc
         required: false
         question: Screen Studio 项目是否执行完整句、摄像头连续、官网产品卡和片尾资源页门禁？
+      - path: skills.lov-media-creator.records.bgm_multi_track
+        required: false
+        question: Vlog 等叙事片是否从你给的整个曲库按叙事混合多首 BGM，只以成片效果取舍？
   interaction:
     ask_missing: true
     max_questions: 1

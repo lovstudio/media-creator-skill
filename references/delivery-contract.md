@@ -54,7 +54,7 @@ opening_still_hold: 1.5s
 - `delivery_status=blocked-on-subtitle-approval`：平台文件不得生成或交接；
 - `delivery_status=approved-master-ready`：批准字幕已进入归档母版且质检通过；尚未请求或生成平台文件；
 - `delivery_status=platform-ready`：批准字幕已按目标平台方式封装或烧录并通过质检；
-- `audio_status=passed`：原声保护、混音、响度和峰值检查通过；
+- `audio_status=passed`：原声保护、混音、响度和峰值检查通过；叙事片多曲配乐还要求 `cue-check.json` 0 ERROR、`smr.json` 全部通过、`cer.json` 未超过纯人声底线的允许差值；
 - `creative_status=passed`：标题、封面、叙事结构和证据段完成；
 - `cover_status=missing`：没有封面图片；`brief-only`：只有方向稿；`rendered`：已出图但尚未完成
   尺寸、安全区、四边条带和目视检查；`approved`：所有目标槽位的正式图片均已验收；
@@ -72,7 +72,8 @@ opening_still_hold: 1.5s
 2. 当前阶段（draft / locked / approved）、目标规格与实际输出规格；
 3. 被压缩、被跳过和被保护的时间段；
 4. 开场请求策略、最终策略、判别来源与理由；是否使用 Highlights，以及问题后标题的文案和锚点；
-5. BGM 文件名、ducking 规则和高潮段原声处理；
+5. BGM 文件名、ducking 规则和高潮段原声处理；叙事片另附 cue 表（每条的曲目、区间与理由）、声明的留白、
+   混音意图区间与理由、各意图下 SMR 最低的句子、CER 与底线的差值，以及母带 I/TP 与编码后 TP；
 6. 视频解码、时间线、响度、峰值和人工回看的结论；
 7. 标题、封面文案、每个目标比例的正式图片路径/尺寸/SHA-256、目视结论和未验证假设；
 8. 做了开场静帧时：静帧图路径与版本、画幅适配方式（裁掉多少 / 是否补边）、停留时长，

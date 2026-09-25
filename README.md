@@ -1,10 +1,11 @@
 # 天才剪辑师 · Video Studio
 
-![Version](https://img.shields.io/badge/version-0.14.1-CC785C)
+![Version](https://img.shields.io/badge/version-0.15.0-CC785C)
 
 把 MP4 或 `.screenstudio` 源工程整理成两阶段交付：先做 Remotion Studio 与字幕审校版本，再以批准字幕生成归档母版、平台文件和正式封面图片。源工程模式保留独立屏幕、摄像头、麦克风、系统声、鼠标和快捷键事件；跨平台任务先完成并质检视频号 9:16，再顺序派生 B 站 16:9。
 
-麦克风先解码为 PCM 再做样本级口水词/口误剪辑。`draft` 只为 EDL 命中区间懒生成 source-scoped 代理分片，不预转完整长源轨；`locked` 后才生成最终连续媒体与混音，`approved` 后才全片渲染。字幕、布局或 BGM 微调通过差异化失效与局部 canary 验证，不再触发五轨和整片重跑。BGM 固定使用已授权的 `Screen Studio Lo-fi / Bright Lounge`；早期程序合成路径已废弃。
+麦克风先解码为 PCM 再做样本级口水词/口误剪辑。`draft` 只为 EDL 命中区间懒生成 source-scoped 代理分片，不预转完整长源轨；`locked` 后才生成最终连续媒体与混音，`approved` 后才全片渲染。字幕、布局或 BGM 微调通过差异化失效与局部 canary 验证，不再触发五轨和整片重跑。录屏与知识系列的 BGM 默认使用已授权的 `Screen Studio Lo-fi / Bright Lounge`；早期程序合成路径已废弃。
+Vlog、旅行片等叙事片则把用户给的整个曲库纳入选曲，按叙事混合多首，并用 cue 校验、语音频段 SMR 与 Whisper 可懂度三道客观门禁验收。
 口播加速使用保持原音高的 time-stretch，禁止用重采样改变对白时长。
 
 Screen Studio 模式还执行双层语义门禁：每个高风险切点做局部短窗 ASR，最终连续人声再做全片 ASR；
@@ -74,6 +75,26 @@ python3 scripts/iteration_plan.py plan \
 并用 `iteration_plan.py record` 把实际墙钟写入 `iteration-timings.json`。完整契约见
 [`references/iteration-performance.md`](references/iteration-performance.md)。
 
+## 叙事片多曲配乐
+
+Vlog、旅行、纪录和宣传片不套用系列默认曲。用户给的曲库整体可用，不按对话里点名的几首收窄，只以成片效果取舍；
+每条 cue 写明叙事或情绪理由，同语种歌词不压对白，歌词默认避开屏幕字卡，留白写明理由。
+人声与音乐不必互斥：每个时刻选 `clear`（音乐让开）、`blend`（音乐在人声下持续在场）或 `feature`（音乐主导），
+段落之间留足气口，不用一串 3–5 秒字卡连续推进。
+
+```bash
+python3 scripts/bgm_tracks.py --library MUSIC_DIR --output work/music/tracks.json --summary work/music/tracks.md
+python3 scripts/validate_cues.py --cues work/music/cues.json --tracks work/music/tracks.json --film work/music/film.json
+python3 scripts/smr_check.py --voice work/audio/voice.json --cues work/music/cues.json --tracks work/music/tracks.json
+python3 scripts/score_mix.py --voice work/audio/voice.json --cues work/music/cues.json --tracks work/music/tracks.json --out-dir work/audio/mix --stems
+python3 scripts/intelligibility.py --mix work/audio/mix/final-mix.wav --srt subs.srt --floor work/audio/mix/stem-voice.wav --output work/music/cer.json
+```
+
+门禁是防止听不清的底线，数值为校准参考：cue 表 0 ERROR；语音频段 SMR 按意图判定（`clear` 中位数 ≥ 16 dB、p10 ≥ 8 dB，
+`blend` 中位数 ≥ 10 dB，`feature` 只记录）；全片 CER 比纯人声底线高出不超过 0.02；
+母带线性处理到 `-16 LUFS-I / -3 dBTP`，给 AAC 编码后的峰值回升留余量。数据格式与规则见
+[`references/audio-mix.md`](references/audio-mix.md)。
+
 示例二：
 
 > Create a publish-ready 16:9 video from this screen recording. Keep the real result audio and separate rendered, audio, creative, and publish status.
@@ -104,6 +125,7 @@ python3 scripts/iteration_plan.py plan \
 - 成片可解码，画幅、帧率、编码和音频流符合目标平台。
 - Studio 是主预览，加载当前权威字幕与最终音频；需要 Subtitle Edit 时，审校 MKV 恰有一个默认 SubRip 字幕轨，回抽后与外置 SRT 逐条一致；批准前不生成平台文件。
 - 最终结果段连续且有原声；BGM 不遮挡人声或关键反馈。
+- 叙事片配乐混合多首且每条 cue 有理由；同语种歌词不压对白，按时刻声明混音意图，SMR 与 CER 底线通过，母带留到 `-3 dBTP`。
 - 章节标题由该幕实际内容证据归纳；知识传播类章卡默认留 1.8–2.4 秒，只显示章号和标题；顶部导航全程显示全部宏观章节。
 - 竖版章节导航、标题、网址和关键控件避开 iPhone 状态栏、刘海 / 灵动岛与平台顶部导航；安全区由统一常量驱动，并用平台实机截图复核。
 - 每个高风险切点做局部 ASR，最终连续人声做全片 ASR；不得残留独立口水词、错误重念或半句跳转。
@@ -155,6 +177,7 @@ python3 scripts/audio_qc.py --help
 python3 scripts/check_opening_still.py --help
 python3 scripts/subtitle_gate.py --help
 python3 scripts/iteration_plan.py --help
+for s in bgm_tracks validate_cues smr_check score_mix intelligibility; do python3 scripts/$s.py --help >/dev/null; done
 ```
 
 ## 依赖
@@ -162,6 +185,7 @@ python3 scripts/iteration_plan.py --help
 - Python 3.8+
 - PyYAML（仅验证 Skill 结构时需要）
 - FFmpeg 与 FFprobe（媒体处理与音频质检时需要）
+- numpy（叙事片配乐分析、SMR 与混音需要）；mlx-whisper 或 openai-whisper（可懂度门禁需要），优先用已有的持久 venv 运行
 - Pillow、Playwright 或图像工具（仅新封面资产需要）
 
 ## License
