@@ -6,6 +6,7 @@
 
 | Skill | 实际输入 → 输出 | 关系 |
 | --- | --- | --- |
+| `lov-media-preprocessor` | 原始实录 → 全片增强/内容分段 + `media-preprocess-handoff/v1` | 可选上游；本 Skill 复用增强画面与原时间映射，承担句子精剪和独立成片，不重复调色。 |
 | `FFmpeg Video Editor` | 自然语言编辑请求 → 单条 FFmpeg 命令 | 可参考的上游原子；本 Skill 负责完整流程、EDL、音频门禁和报告，不只返回命令。 |
 | `lov-video-chapter` | SRT/视频 → 章节项目、透明层、烧录视频和编辑包 | 下游可选能力；接收已确认的成品或字幕，不参与本 Skill 的核心剪辑判断。 |
 | `lov-subtitle-freedom-skill` | 视频/SRT + 学习者 Profile → 保持时间轴的 SRT/ASS | 下游可选能力；只在明确要求学习字幕时交接。 |
@@ -16,6 +17,7 @@
 
 ## Atomic Handoffs
 
+- 已增强素材 handoff + 全片语义证据 → `clip_batch.py` 的独立切片计划、实际 MP4/封面/字幕和 `delivery.json`。增强程度与分段取舍归上游，独立传播价值、剪口流畅和成片验收归本 Skill。
 - `SOURCE_VIDEO`、音频和字幕流 → `media_probe.py` → `source-probe.json`：本 Skill 自己拥有输入完整性判断。
 - EDL JSON → `timeline_check.py` → `timeline-check.json`：本 Skill 自己拥有时间线不重叠和 protected segment 门禁。
 - Remotion 工程 + 当前字幕 + 最终音频 → 现有 Remotion Studio → 主预览与刷新证据：本 Skill 拥有画面、声音和字幕的审片门禁。
@@ -30,6 +32,7 @@
 
 ## Overlap Decisions
 
+- 整场实录的“智能分段”在上游准备素材；能独立理解的传播切片与精包装在本 Skill。二者通过原时间码交接，保留 Single Skill 结构，不新建同职能切片 Skill。
 - 与 `FFmpeg Video Editor` 有命令级重叠，保留其作为参考，不把本 Skill 缩减成命令生成器，因为用户要的是从素材到成片的完整闭环。
 - 与 `lov-video-chapter`、`lov-subtitle-freedom-skill`、`lov-image-creator` 只在文件级交接，不复制章节、学习字幕或生图实现。
 - 与 `lov-channels-cover` 的边界在「封面已定稿」：它可用时沿用其钩子与整墙门禁；不可用时由本 Skill 组织回退生成与同等交付验收。成片画幅、首帧停留时长和声画同步始终归本 Skill。

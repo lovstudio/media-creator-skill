@@ -1,6 +1,6 @@
 schema: lovstudio/skill-card/v1
-version: "0.13.3"
-description: "将 MP4 或 Screen Studio 源工程整理为先 Studio/字幕审校、后发布的 Remotion 成片，保留独立屏幕、摄像头、麦克风、系统声与事件轨，并派生横竖版包装。"
+version: "0.14.1"
+description: "将整场课程和多人交流精剪为独立切片，或将 MP4、Screen Studio 工程整理为 Remotion 成片，完成字幕审校、连续混音、统一包装和实际文件验收。"
 owner:
   team: "Media Creator Maintainers"
   contact: "Repository issue tracker"

@@ -1,6 +1,6 @@
 # 天才剪辑师 · Video Studio
 
-![Version](https://img.shields.io/badge/version-0.13.3-CC785C)
+![Version](https://img.shields.io/badge/version-0.14.1-CC785C)
 
 把 MP4 或 `.screenstudio` 源工程整理成两阶段交付：先做 Remotion Studio 与字幕审校版本，再以批准字幕生成归档母版、平台文件和正式封面图片。源工程模式保留独立屏幕、摄像头、麦克风、系统声、鼠标和快捷键事件；跨平台任务先完成并质检视频号 9:16，再顺序派生 B 站 16:9。
 
@@ -30,6 +30,10 @@ npx skills add "$SKILL_SOURCE_DIR"
 ```
 
 ## 使用
+
+整场课程、活动或多人交流可以直接做成**独立切片批次**：通读全片并记录取舍，提取全部有价值的完整内容，再精修词头句尾、校正字幕、连续混音、统一包装。无需另建 Skill，也不强制做成系列课。
+
+新增 `scripts/clip_batch.py` 与可复制的 Remotion 工程模板，可导出实际 MP4、两种封面、字幕和交付清单；已完成文件经哈希核验后复用，半成品保留再重试。详细输入、命令、授权审校与真实验收见 [独立切片工作流](references/independent-clips.md)。该分支接受 `lov-media-preprocessor` 的增强交接，避免重复调色；普通录屏流程保持原有审校方式。
 
 示例一：
 

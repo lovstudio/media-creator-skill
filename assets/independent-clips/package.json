@@ -1,0 +1,11 @@
+{
+  "name": "independent-clips-render",
+  "private": true,
+  "type": "module",
+  "scripts": {"studio": "remotion studio src/index.tsx --no-open", "check": "tsc --noEmit"},
+  "dependencies": {
+    "@remotion/bundler": "4.0.517", "@remotion/renderer": "4.0.517", "@remotion/cli": "4.0.517",
+    "react": "19.2.3", "react-dom": "19.2.3", "remotion": "4.0.517"
+  },
+  "devDependencies": {"@types/react": "19.2.7", "typescript": "5.9.3"}
+}

@@ -1,8 +1,7 @@
 ---
 name: lov-media-creator
 description: >
-  把 MP4 或 Screen Studio 源工程剪成 Remotion 成片：保留独立画面、摄像头、麦克风与事件轨，
-  完成精剪、章节、字幕、动画、横竖版和封面；先交 Studio 审校，再生成平台文件。
+  把整场课程/多人交流实录剪成独立切片，或把 MP4、Screen Studio 源工程剪成 Remotion 成片；完成精剪、字幕、连续混音、动画、横竖版与封面。
   Use when editing recordings or .screenstudio projects into review or publish-ready videos.
 license: MIT
 compatibility: >
@@ -14,7 +13,7 @@ depends_on:
   - lov-branding-consistency
 metadata:
   author: contributors
-  version: "0.13.3"
+  version: "0.14.1"
   card_standard: lovstudio/skill-card/v1
   tags:
     - media-production
@@ -37,6 +36,7 @@ metadata:
 
 ### Activate when
 
+- 用户说“从整场实录选出全部有传播价值的独立切片，剪得流畅并精包装”，包括未完整录下的分享与多人交流。
 - 用户说“把这段录屏剪成视频号成片，保留最后有声音的成果段”。
 - 用户说“压缩上传卡顿、加 BGM、做 16:9 封面，并给我质检报告”。
 - 用户希望把长录屏整理成有开场、问题、操作证据和最终结果的短视频。
@@ -66,7 +66,9 @@ metadata:
 
 ## Workflow (MANDATORY)
 
-**必须按以下顺序执行。**
+**先按成片目标分支。** 整场课程、活动或多人分享要独立切片时，执行 [`references/independent-clips.md`](references/independent-clips.md) 与 `scripts/clip_batch.py`：全片取舍 → 精确区间 → 字幕复核 → 连续混音 → 锁定 → 批量包装 → 实际 MP4 验收。
+该分支不强制系列编号、章节卡、官网卡或片尾资源页；全片增强可交给 `lov-media-preprocessor` 并复用其已验证 handoff，不重复提亮。已有明确全自动审校授权时，记录真实代理审核与依据后继续，不能写成用户逐条听审；发布授权与平台回读仍交给发布能力。其他录屏/Screen Studio 流程按以下步骤执行。
+
 
 ### Step 0: 解析运行环境
 - 使用环境中的 `SKILL_DIR`；没有时从当前 Skill 上下文推断安装目录。
@@ -86,8 +88,7 @@ export SKILL_DIR="/path/to/lov-media-creator"
 每次调用都解析 `context.profile`。若用户明确提出要长期保留的剪辑原则、音频偏好或品牌事实，调用 `scripts/profile_store.py record` 并带 `--confirm`，随后简短报告保存路径。
 
 ### Step 1: 明确输入与成片目标
-如果工作区里已经混有多期素材、根级 `work` / `output` 或不明归属的旧成片，先按
-[`references/project-workspace.md`](references/project-workspace.md) 做只读盘点，再移动文件。
+如果工作区混有多期素材、根级 `work` / `output` 或不明归属的旧成片，先按 [`references/project-workspace.md`](references/project-workspace.md) 做只读盘点，再移动文件。
 默认结构是**顶层按期、每期内按生命周期分层**；不要在“全部按期”和“全部按媒介”之间二选一。
 移动后必须更新工程代码、交付报告与质检 JSON 里的旧路径，并对现有成片做可读/解码回读。
 

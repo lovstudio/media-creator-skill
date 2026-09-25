@@ -1,0 +1,21 @@
+{
+  "schema": "media-independent-clips/v1",
+  "source": {"path": "source.mp4", "duration": 120},
+  "fps": 25,
+  "brand": "现场交流",
+  "assets": {"body_font": "fonts/body.ttf", "title_font": "fonts/title.ttf"},
+  "music": null,
+  "coverage": [
+    {"start": 0, "end": 12, "decision": "exclude", "reason": "已核验为开场设备调整", "evidence": "替换为实际画面和转录依据"},
+    {"start": 12, "end": 90, "decision": "candidate", "reason": "完整问题与具体回答", "evidence": "替换为实际全片阅读和局部回看依据"},
+    {"start": 90, "end": 120, "decision": "review", "reason": "下一段回答中断，尚需判断", "evidence": "替换为实际核验记录；不能标为全片筛选完成"}
+  ],
+  "already_published_ranges": [],
+  "clips": [{
+    "id": "one-concrete-case", "title": "从一个具体场景开始", "titleLines": ["从一个", "具体场景开始"],
+    "ranges": [[12, 90]], "reason": "具体方法与适用边界完整", "standalone_reason": "观众不用看前文也能理解问题和例子",
+    "boundary_evidence": "替换为实际词级时间、波形和剪口复核；不要照抄示例通过生产门禁",
+    "presentation": "source-led", "role": "现场原声", "keywords": ["具体场景", "适用边界"],
+    "cropX": 760, "cropY": 520, "privacyMasks": [], "voice_gain_windows": []
+  }]
+}

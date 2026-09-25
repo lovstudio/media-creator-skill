@@ -8,6 +8,8 @@ its source.
 
 `lov-media-creator` turns flat recordings or Screen Studio source projects into a review-first Remotion delivery. It separates draft, locked and approved work, reuses source-scoped proxies across small revisions, and runs local canaries before long jobs. It preserves independent tracks, verifies micro-cuts, keeps chapter/camera state coherent, and mounts the final BGM mix only after picture and dialogue lock.
 
+For whole-course or multi-speaker recordings, it selects independently understandable excerpts using full-recording evidence, then runs precise cuts, caption review, continuous audio, reusable packaging and actual MP4 verification. This branch does not force series numbering or chapters. The bundled MLX transcription adapter requires Apple Silicon and local weights.
+
 ## Owner
 
 Media Creator Maintainers; contact through the repository issue tracker.
@@ -60,7 +62,7 @@ The primary preview is Remotion Studio with the current authoritative edit state
 
 ## Skill Version
 
-0.13.3
+0.14.1
 
 ## Ethical Considerations
 

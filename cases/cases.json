@@ -153,5 +153,64 @@
       "privacy": "已移除本地绝对路径、Screen Studio 工程内容、原始转写全文、账号凭据和发布会话信息；只保留用户本人公开发布的 B 站链接、公开封面与不可逆媒体摘要。"
     },
     "cover": "https://i1.hdslb.com/bfs/archive/ff07bff235da934be1f30f940527ea67ed11f361.jpg"
+  },
+  {
+    "type": "case",
+    "title": "整场交流独立切片：通用CLI的30.8秒实片回归",
+    "description": "用户认可整场课程拆成独立切片的流畅效果，要求沉淀为可复用Skill；保持已发布文件不变，用一个既有片段验证新工具。",
+    "input": {
+      "items": [
+        "用户已认可的30.8秒课程片段主体",
+        "既有审校字幕",
+        "已授权配乐与本地字体"
+      ],
+      "source_profile": {
+        "duration_seconds": 30.8,
+        "resolution": "1920x1080",
+        "frame_rate": 25
+      }
+    },
+    "prompt": "优化现有媒体预处理与创作Skill，固化独立切片、流畅剪口和精包装流程。",
+    "output": {
+      "items": [
+        "新的1080x1920 H.264/AAC MP4",
+        "1080x1440及1440x1080封面",
+        "词级ASR、审校SRT、哈希锁定与直接MP4交付清单"
+      ],
+      "evidence": {
+        "date": "2026-09-07",
+        "skill_version": "0.14.0",
+        "video_sha256": "384691eb271a379a3f062ab9c049308010438325228ac559d10c2504977240b7",
+        "full_decode": "passed",
+        "lufs_i": -16.78,
+        "true_peak_dbtp": -5.88,
+        "audio_alignment_windows": [
+          {
+            "seconds": 0,
+            "lag_ms": 0.0,
+            "correlation": 0.9919437879358884
+          },
+          {
+            "seconds": 9.24,
+            "lag_ms": 0.0,
+            "correlation": 0.9860757169685401
+          },
+          {
+            "seconds": 20.02,
+            "lag_ms": 0.0,
+            "correlation": 0.9837671458083367
+          },
+          {
+            "seconds": 24.8,
+            "lag_ms": 0.0,
+            "correlation": 0.9917779004541275
+          }
+        ],
+        "visual_review": "actual encoded head/middle/tail and both covers inspected by agent",
+        "human_auditory_review": false,
+        "publication": "not-published; local regression only",
+        "scope": "This run tests the reusable CLI on 30.8 seconds; the earlier 48-clip batch is context, not claimed as produced again by this CLI."
+      }
+    }
   }
 ]
