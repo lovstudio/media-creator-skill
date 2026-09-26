@@ -13,7 +13,7 @@ depends_on:
   - lov-branding-consistency
 metadata:
   author: contributors
-  version: "0.15.0"
+  version: "0.16.0"
   card_standard: lovstudio/skill-card/v1
   tags:
     - media-production

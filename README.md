@@ -1,6 +1,6 @@
 # 天才剪辑师 · Video Studio
 
-![Version](https://img.shields.io/badge/version-0.15.0-CC785C)
+![Version](https://img.shields.io/badge/version-0.16.0-CC785C)
 
 把 MP4 或 `.screenstudio` 源工程整理成两阶段交付：先做 Remotion Studio 与字幕审校版本，再以批准字幕生成归档母版、平台文件和正式封面图片。源工程模式保留独立屏幕、摄像头、麦克风、系统声、鼠标和快捷键事件；跨平台任务先完成并质检视频号 9:16，再顺序派生 B 站 16:9。
 
@@ -91,7 +91,7 @@ python3 scripts/intelligibility.py --mix work/audio/mix/final-mix.wav --srt subs
 ```
 
 门禁是防止听不清的底线，数值为校准参考：cue 表 0 ERROR；语音频段 SMR 按意图判定（`clear` 中位数 ≥ 16 dB、p10 ≥ 8 dB，
-`blend` 中位数 ≥ 10 dB，`feature` 只记录）；全片 CER 比纯人声底线高出不超过 0.02；
+`blend` 中位数 ≥ 10 dB、p10 ≥ 4 dB，`feature` 只记录）；逐条字幕切片转写的平均 CER 比纯人声底线高出不超过 0.02；
 母带线性处理到 `-16 LUFS-I / -3 dBTP`，给 AAC 编码后的峰值回升留余量。数据格式与规则见
 [`references/audio-mix.md`](references/audio-mix.md)。
 

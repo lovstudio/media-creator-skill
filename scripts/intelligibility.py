@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """Objective proxy for "the music masks the voice": Whisper CER of a mix vs a voice-only floor.
 
-Transcribes the mix, scores every SRT cue by character error rate (CER, capped at 1.0) of the words
-heard in that window, and compares the mean with the same score on the voice-only stem (the floor:
-Whisper's own error without music). Gate: mean CER of the mix - floor <= --max-delta over the cues
-scored in both. Decoding is deterministic (temperature 0) so a rerun gives the same verdict.
+Every SRT cue is cut out on its own (cue +- 0.3 s) and transcribed separately, then scored by
+character error rate (CER, capped at 1.0); the mean is compared with the same score on the voice-only
+stem (the floor: Whisper's own error without music). Gate: mean CER of the mix - floor <= --max-delta
+over the cues scored in both. Per-cue clips matter: transcribing the whole film lets audio elsewhere in
+Whisper's 30 s window flip a cue whose own audio did not change. Decoding is deterministic
+(temperature 0) so a rerun gives the same verdict.
 Whisper repetition loops ("icangoicango...") are an ASR failure, not masking evidence: such cues are
 listed under asr_loops for listening and left out of both means. Per-cue CER is noisy, so the largest
 per-cue regressions are only listed for listening, never gated.
@@ -16,10 +18,19 @@ Python that already has one installed; set HF_HUB_OFFLINE=1 when the model is ca
 import argparse
 import json
 import re
+import subprocess
 import sys
+from functools import lru_cache
 from pathlib import Path
 
+import numpy as np
+
 MODELS = {"mlx": "mlx-community/whisper-large-v3-mlx", "openai": "large-v3"}
+MODE = "per-cue"
+SR = 16000
+# Short clips have no context, so Whisper may switch to Traditional characters at random; a prompt in
+# Simplified Chinese keeps the script stable (both sides get the same prompt).
+PROMPTS = {"zh": "以下是普通话的句子，使用简体中文。"}
 
 
 def norm(s):
@@ -76,25 +87,38 @@ def backend_name(choice):
                  "or run the script with an existing venv that has one")
 
 
-def transcribe(audio, backend, model, language):
-    kw = {"language": language, "word_timestamps": True, "condition_on_previous_text": False, "temperature": 0.0}
+def load_audio(path):
+    raw = subprocess.run(["ffmpeg", "-v", "error", "-nostdin", "-i", str(path), "-map", "0:a:0", "-ac", "1",
+                          "-ar", str(SR), "-f", "f32le", "-"], capture_output=True, check=True).stdout
+    return np.frombuffer(raw, np.float32)
+
+
+@lru_cache(maxsize=1)
+def openai_model(name):
+    import whisper
+    return whisper.load_model(name)
+
+
+def transcribe(clip, backend, model, language):
+    kw = {"language": language, "condition_on_previous_text": False, "temperature": 0.0,
+          "initial_prompt": PROMPTS.get(language)}
     if backend == "mlx":
         import mlx_whisper
-        r = mlx_whisper.transcribe(str(audio), path_or_hf_repo=model, **kw)
+        r = mlx_whisper.transcribe(clip, path_or_hf_repo=model, **kw)
     else:
-        import whisper
-        r = whisper.load_model(model).transcribe(str(audio), **kw)
-    return [w for s in r["segments"] for w in s.get("words", [])]
+        r = openai_model(model).transcribe(clip, **kw)
+    return "".join(s["text"].strip() for s in r["segments"])
 
 
 def score(audio, cues, backend, model, language):
-    words = transcribe(audio, backend, model, language)
+    x = load_audio(audio)
     rows = []
     for a, b, text in cues:
-        heard = "".join(w["word"].strip() for w in words if a - 0.3 <= (w["start"] + w["end"]) / 2 <= b + 0.3)
+        clip = np.ascontiguousarray(x[max(0, int((a - 0.3) * SR)):int((b + 0.3) * SR)])
+        heard = transcribe(clip, backend, model, language) if len(clip) > SR // 10 else ""
         rows.append({"t": round(a, 2), "sub": text, "asr": heard, "cer": round(min(1.0, cer(text, heard)), 3),
                      "asr_loop": asr_loop(text, heard)})
-    return {"mix": str(audio), "mean_cer": round(mean_cer(rows), 4), "rows": rows}
+    return {"mix": str(audio), "mode": MODE, "mean_cer": round(mean_cer(rows), 4), "rows": rows}
 
 
 def mean_cer(rows):
@@ -123,6 +147,8 @@ def main():
     if args.floor:
         if args.floor.endswith(".json"):
             floor = json.loads(Path(args.floor).read_text(encoding="utf-8"))
+            if floor.get("mode") != MODE:
+                sys.exit(f"{args.floor} was scored in another mode; pass the voice-only stem to re-score the floor")
         else:
             floor = score(args.floor, cues, backend, model, args.language)
             if args.floor_output:

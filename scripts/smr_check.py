@@ -3,9 +3,10 @@
 
 For every voice line: voice-active 100 ms frames, energy in 500-3000 Hz of the voice bus vs the
 ducked music bus -> SMR median and p10 (dB). SMR is a floor against unintelligible speech, not a rule
-that music must disappear, so the floor follows the mix intent at that line (cues.json mix_intents):
+that music must disappear, so the floor follows the line's mix intent (its own "intent" in voice.json,
+else the cues.json mix_intents range covering most of it):
   clear   median >= 16 dB and p10 >= 8 dB (calibrated on an accepted Kailash mix)
-  blend   median >= 10 dB (music stays present under the voice; provisional calibration)
+  blend   median >= 10 dB and p10 >= 4 dB (music stays present under the voice; provisional calibration)
   feature reported only; the intelligibility.py CER floor still applies
 Also reports how loud the music under each line is relative to the level_db=0 bed.
 Run it before rendering; a failing line means move, lower or re-automate the cue under it, or
@@ -40,6 +41,7 @@ def main():
     ap.add_argument("--median-min", type=float, default=16.0, help="clear lines: SMR median floor, dB")
     ap.add_argument("--p10-min", type=float, default=8.0, help="clear lines: SMR 10th-percentile floor, dB")
     ap.add_argument("--blend-median-min", type=float, default=10.0, help="blend lines: SMR median floor, dB")
+    ap.add_argument("--blend-p10-min", type=float, default=4.0, help="blend lines: SMR 10th-percentile floor, dB")
     ap.add_argument("--output", help="write rows and failures as JSON")
     args = ap.parse_args()
     sheet, tracks = score_mix.load_json(args.cues), score_mix.load_json(args.tracks)
@@ -58,11 +60,11 @@ def main():
         med, p10 = float(np.median(smr)), float(np.percentile(smr, 10))
         seg = md[int(v["at"] * SR):int((v["at"] + v["dur"]) * SR)]
         under = score_mix.rms_db(seg) - p["music_ref"] if len(seg) else float("nan")
-        intent = score_mix.intent_at(sheet, v["at"], v["at"] + v["dur"])
+        intent = v.get("intent") or score_mix.intent_at(sheet, v["at"], v["at"] + v["dur"])
         if intent == "clear":
             ok = med >= args.median_min and p10 >= args.p10_min
         elif intent == "blend":
-            ok = med >= args.blend_median_min
+            ok = med >= args.blend_median_min and p10 >= args.blend_p10_min
         else:
             ok = None
         rows.append({"line": v["id"], "t0": v["at"], "intent": intent, "smr_median": round(med, 1),
@@ -74,10 +76,10 @@ def main():
         print(f"{tag} {str(r['line']):14s} @{r['t0']:7.1f} {r['intent']:7s} SMR med {r['smr_median']:5.1f}"
               f"  p10 {r['smr_p10']:5.1f}  music {r['music_under_re_bed']:+5.1f} dB re bed")
     print(f"RESULT {'PASS' if not fails else 'FAIL'}  failing lines: {fails}  (clear median>={args.median_min}, "
-          f"p10>={args.p10_min}; blend median>={args.blend_median_min}; feature not gated)")
+          f"p10>={args.p10_min}; blend median>={args.blend_median_min}, p10>={args.blend_p10_min}; feature not gated)")
     if args.output:
         gate = {"clear": {"median_min": args.median_min, "p10_min": args.p10_min},
-                "blend": {"median_min": args.blend_median_min}, "feature": None}
+                "blend": {"median_min": args.blend_median_min, "p10_min": args.blend_p10_min}, "feature": None}
         Path(args.output).write_text(json.dumps({"params": p, "gate": gate, "rows": rows, "fails": fails},
                                                 ensure_ascii=False, indent=1), encoding="utf-8")
     return 1 if fails else 0

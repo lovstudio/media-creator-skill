@@ -5,9 +5,12 @@ Voice lines are gain-matched to --voice-lufs and peak-limited. Music cues are cu
 library (bgm_tracks.py), loudness-matched with level_db, faded, automated with env points and ducked
 by the voice bus (ducking.py). Ducking depth follows the director's mix intent per moment:
 clear (music steps back, default), blend (music stays present under the voice) or feature (music
-leads and the voice rides on top); intents change over 250 ms ramps, never as gain steps.
-Ambience ducks at half depth; a chunk from the same source clip as an overlapping voice line is
-dropped, otherwise the same words play twice.
+leads and the voice rides on top); intents glide over a 0.8 s centred average, never as gain steps,
+and a line's own intent (from the beat that owns it) wins over the ranges, so a J-cut keeps its depth.
+Ambience has its own -10 dBFS look-ahead limiter and ducks at half depth. Where ambience comes from the
+same source clip as a voice line, only the source times that line uses and the line's own span
+(+-0.3 s) are muted, with 60 ms ramps outside the cut, otherwise the same words play twice; the rest of
+the chunk stays, so lines do not end in digital silence.
 
 Mastering is linear: limit peaks, measure I/TP with ebur128, apply one static gain to --target-lufs,
 and lower the limiter ceiling until the true peak stays under --tp-ceiling. loudnorm is not used: its
@@ -15,7 +18,8 @@ single-pass mode turns dynamic whenever the linear gain would break the true-pea
 -3 dBTP by default because AAC encoding raises true peak afterwards.
 
 voice.json (paths resolve relative to the file):
-  {"duration": s, "lines": [{"id", "file", "at", "lufs"?, "source"?}],
+  {"duration": s, "lines": [{"id", "file", "at", "lufs"?, "source"?, "source_spans"?: [[s0, s1], ...],
+                              "intent"?}],
    "ambient": [{"file", "at", "dur", "ss"?, "level_db"?, "source"?}]}
 cues.json:  {"cues": [{"id", "track", "track_in", "at", "dur", "level_db" | "gain_db",
                        "fade_in"?, "fade_out"?, "env"?: [[t_rel, db], ...], "rationale"}],
@@ -37,7 +41,8 @@ import ducking  # noqa: E402
 SR = ducking.SR
 # (broadband duck, extra speech-band duck) in dB. clear comes from --duck-db/--band-cut-db; blend and
 # feature are starting points to calibrate by ear and with smr_check/intelligibility, not fixed law.
-INTENTS = {"blend": (-7.0, -6.0), "feature": (-3.0, -4.0)}
+INTENTS = {"blend": (-7.0, -6.0), "feature": (-4.0, -3.0)}
+GLIDE_S = 0.8
 
 
 def decode(path, ch=1, ss=None, dur=None, af=None):
@@ -107,12 +112,14 @@ def add_mix_args(p):
                    help="RMS dBFS of a level_db=0 music bed before ducking (default -27)")
     p.add_argument("--duck-db", type=float, help="clear-intent broadband duck under speech (sheet value, else -13)")
     p.add_argument("--band-cut-db", type=float, help="clear-intent extra 500-3000 Hz duck (sheet value, else -8)")
+    p.add_argument("--ambient-limit", type=float, default=-10.0,
+                   help="ambience bus peak ceiling, dBFS; keeps loud clacks from pumping the master (default -10)")
 
 
 def mix_params(args, sheet):
     return {
         "voice_lufs": args.voice_lufs, "max_voice_boost": args.max_voice_boost,
-        "voice_limit": args.voice_limit, "music_ref": args.music_ref,
+        "voice_limit": args.voice_limit, "music_ref": args.music_ref, "ambient_limit": args.ambient_limit,
         "duck_db": args.duck_db if args.duck_db is not None else sheet.get("duck_db", -13.0),
         "band_cut_db": args.band_cut_db if args.band_cut_db is not None else sheet.get("band_cut_db", -8.0),
     }
@@ -128,23 +135,48 @@ def intent_at(sheet, t0, t1):
     return best if cover >= 0.5 * (t1 - t0) else "clear"
 
 
-def depth_curves(sheet, n, p):
-    """Per-sample duck depths from mix_intents (scalars when none are set), ramped over 250 ms."""
-    ranges = sheet.get("mix_intents", [])
-    if not ranges:
+def smooth(x, k):
+    """Centred moving average over k points via cumulative sums: O(N), unlike np.convolve with a long window."""
+    k |= 1
+    c = np.concatenate([[0.0], np.cumsum(np.pad(x, k // 2, mode="edge"), dtype=np.float64)])
+    return (c[k:] - c[:-k]) / k
+
+
+def depth_curves(sheet, lines, n, p):
+    """Per-sample duck depths from mix_intents and per-line intents (scalars when none are set)."""
+    spans = [(r["t0"], r["t1"], r["intent"], r) for r in sheet.get("mix_intents", [])]
+    spans += [(v["at"], v["at"] + v["dur"], v["intent"], {}) for v in lines if v.get("intent")]
+    if not spans:
         return p["duck_db"], p["band_cut_db"]
     hop, m = 480, n // 480 + 1
     duck, band = np.full(m, p["duck_db"]), np.full(m, p["band_cut_db"])
-    for r in ranges:
-        if r["intent"] not in ("clear", *INTENTS):
-            raise SystemExit(f"unknown mix intent '{r['intent']}' (use clear, blend or feature)")
-        d, b = INTENTS.get(r["intent"], (p["duck_db"], p["band_cut_db"]))
-        i, j = int(r["t0"] * 100), int(r["t1"] * 100)
+    for t0, t1, intent, r in spans:  # line intents come last, so a J-cut line keeps its own depth
+        if intent not in ("clear", *INTENTS):
+            raise SystemExit(f"unknown mix intent '{intent}' (use clear, blend or feature)")
+        d, b = INTENTS.get(intent, (p["duck_db"], p["band_cut_db"]))
+        i, j = int(t0 * 100), int(t1 * 100)
         duck[i:j], band[i:j] = r.get("duck_db", d), r.get("band_cut_db", b)
-    ker = np.ones(25) / 25
-    duck = np.convolve(np.pad(duck, 12, mode="edge"), ker, "valid")
-    band = np.convolve(np.pad(band, 12, mode="edge"), ker, "valid")
+    k = int(GLIDE_S * 100)
+    duck, band = smooth(duck, k), smooth(band, k)
     return np.repeat(duck, hop)[:n].astype(np.float32), np.repeat(band, hop)[:n].astype(np.float32)
+
+
+def mute_spans(x, start, cuts, ramp_s=0.06):
+    """Zero x inside timeline cuts (x[0] sits at `start` s), ramping over ramp_s outside each cut."""
+    g = np.ones(len(x), np.float32)
+    r = int(ramp_s * SR)
+    for c0, c1 in cuts:
+        i, j = int(round((c0 - start) * SR)), int(round((c1 - start) * SR))
+        if j <= 0 or i >= len(x) or j <= i:
+            continue
+        g[max(0, i):min(len(x), j)] = 0
+        if i > 0:
+            lo = max(0, i - r)
+            g[lo:i] = np.minimum(g[lo:i], np.linspace(1, 0, i - lo, dtype=np.float32))
+        if j < len(x):
+            hi = min(len(x), j + r)
+            g[j:hi] = np.minimum(g[j:hi], np.linspace(0, 1, hi - j, dtype=np.float32))
+    return x * g, float(np.count_nonzero(g == 0) / SR)
 
 
 def build_buses(voice_path, sheet, tracks, p, ambient=True):
@@ -156,7 +188,6 @@ def build_buses(voice_path, sheet, tracks, p, ambient=True):
     amb = np.zeros(n, np.float32)
     music = np.zeros((n, 2), np.float32)
     report = {"params": p, "voice": [], "ambient": [], "music": []}
-    spans = []
     for v in plan["lines"]:
         path = base / v["file"]
         lufs = v.get("lufs")
@@ -166,23 +197,29 @@ def build_buses(voice_path, sheet, tracks, p, ambient=True):
         g = min(p["voice_lufs"] - lufs, p["max_voice_boost"])
         place(voice, ramp(x * 10 ** (g / 20), 0.01, 0.02), v["at"])
         dur = len(x) / SR
-        spans.append((v.get("source"), v["at"] - 1.0, v["at"] + dur + 1.0))
-        report["voice"].append({"id": v.get("id"), "at": v["at"], "dur": round(dur, 3), "gain_db": round(g, 1)})
+        report["voice"].append({"id": v.get("id"), "at": v["at"], "dur": round(dur, 3), "gain_db": round(g, 1),
+                                "intent": v.get("intent")})
     if ambient:
         pad = 0.3
         for a in plan.get("ambient", []):
-            src = a.get("source")
-            if src is not None and any(s == src and t0 < a["at"] + a["dur"] and a["at"] < t1 for s, t0, t1 in spans):
-                report["ambient"].append({**a, "used": False, "reason": "same source as an overlapping voice line"})
-                continue
             ss = a.get("ss", 0.0)
             pre = min(pad, ss)
             x = decode(base / a["file"], ss=ss - pre, dur=a["dur"] + pre + pad, af="highpass=f=60,lowpass=f=12000")
             if len(x) < SR * 0.2:
                 continue
             g = float(np.clip(a.get("level_db", -32.0) - rms_db(x), -30, 12))
-            place(amb, ramp(x * 10 ** (g / 20), pre + 0.1, pad + 0.1), a["at"] - pre)
-            report["ambient"].append({**a, "used": True, "gain_db": round(g, 1)})
+            x = ramp(x * 10 ** (g / 20), pre + 0.1, pad + 0.1)
+            cuts = []
+            for v, rv in zip(plan["lines"], report["voice"]):
+                if a.get("source") is None or v.get("source") != a["source"]:
+                    continue
+                cuts.append((v["at"] - 0.3, v["at"] + rv["dur"] + 0.3))
+                cuts += [(a["at"] + s0 - ss, a["at"] + s1 - ss) for s0, s1 in v.get("source_spans", [])]
+            x, muted = mute_spans(x, a["at"] - pre, cuts)
+            place(amb, x, a["at"] - pre)
+            report["ambient"].append({**a, "gain_db": round(g, 1), "muted_s": round(muted, 2)})
+        amb, agr = ducking.peak_limit(amb, p["ambient_limit"])
+        report["ambient_limiter_max_gr_db"] = round(agr, 1)
     playable = tracks["playable"]
     for c in sheet["cues"]:
         x = decode(playable[c["track"]]["file"], ch=2, ss=c["track_in"], dur=c["dur"])
@@ -201,7 +238,7 @@ def build_buses(voice_path, sheet, tracks, p, ambient=True):
         report["music"].append({"id": c.get("id"), "track": c["track"], "at": c["at"], "gain_db": round(g, 1)})
     voice, gr = ducking.peak_limit(voice, p["voice_limit"])
     report["voice_limiter_max_gr_db"] = round(gr, 1)
-    duck_db, band_cut_db = depth_curves(sheet, n, p)
+    duck_db, band_cut_db = depth_curves(sheet, report["voice"], n, p)
     music, env = ducking.duck(music, voice, duck_db, band_cut_db)
     amb = amb * 10 ** ((duck_db * 0.5) * env / 20)
     report["mix_intents"] = sheet.get("mix_intents", [])

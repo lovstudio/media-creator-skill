@@ -125,6 +125,25 @@ class CueValidationTests(unittest.TestCase):
         out = run([cue("a", "zh_song", 10, 50)], intents=[{"t0": 10, "t1": 20, "intent": "feature", "reason": "x"}])
         self.assertTrue(any("lyrics under 'zh' dialogue" in e for e in out["errors"]))
 
+    def test_music_inside_declared_silence_past_the_tail_is_an_error(self) -> None:
+        silence = [{"t0": 20, "t1": 40, "reason": "summit"}]
+        tail = run([cue("a", "instr", 0, 21.5), cue("b", "instr2", 40, 20)], silences=silence)
+        self.assertFalse(any("inside declared silence" in e for e in tail["errors"]))
+        late = run([cue("a", "instr", 0, 30), cue("b", "instr2", 40, 20)], silences=silence)
+        self.assertTrue(any("inside declared silence" in e for e in late["errors"]))
+
+    def test_pacing_checks(self) -> None:
+        film = {"duration": 60.0, "voice_spans": [{"t0": 1.0, "t1": 4.6}, {"t0": 20.0, "t1": 22.0}],
+                "text_spans": [{"t0": 30.0, "t1": 32.0, "text": "十二个字的一张字卡要读够时间"}],
+                "chapters": [{"t": 0.0}, {"t": 12.0, "title": "二"}],
+                "beats": [{"t0": 0.0, "t1": 5.0}, {"t0": 5.0, "t1": 8.0}, {"t0": 8.0, "t1": 10.0},
+                          {"t0": 10.0, "t1": 12.0}, {"t0": 12.0, "t1": 25.0, "transition_in": "cut"}]}
+        out = " | ".join(VALIDATE.pacing(film))
+        self.assertIn("shorter than their reading time", out)
+        self.assertIn("less than 1.0s after their last word", out)
+        self.assertIn("3 beats under 4.0s in a row", out)
+        self.assertIn("opens on a hard cut", out)
+
     def test_short_text_card_chain_warns(self) -> None:
         cards = [(0.0, 4.0), (4.5, 8.0), (8.2, 12.0), (20.0, 30.0), (30.5, 34.0)]
         self.assertEqual(VALIDATE.card_runs(cards), [[(0.0, 4.0), (4.5, 8.0), (8.2, 12.0)]])
@@ -191,14 +210,41 @@ class DuckingTests(unittest.TestCase):
         self.assertEqual(SCORE_MIX.intent_at(sheet, 1.5, 2.5), "blend")
         self.assertEqual(SCORE_MIX.intent_at(sheet, 2.8, 4.0), "clear")
         p = {"duck_db": -13.0, "band_cut_db": -8.0}
-        duck, band = SCORE_MIX.depth_curves(sheet, 4 * DUCKING.SR, p)
+        duck, band = SCORE_MIX.depth_curves(sheet, [], 4 * DUCKING.SR, p)
         sr = DUCKING.SR
         self.assertAlmostEqual(float(duck[int(0.5 * sr)]), -13.0, places=3)
         self.assertAlmostEqual(float(duck[int(2.0 * sr)]), SCORE_MIX.INTENTS["blend"][0], places=3)
         self.assertAlmostEqual(float(band[int(2.0 * sr)]), SCORE_MIX.INTENTS["blend"][1], places=3)
-        edge = duck[int(0.9 * sr):int(1.2 * sr)]
-        self.assertLess(float(np.abs(np.diff(edge)).max()), 1.0)
-        self.assertEqual(SCORE_MIX.depth_curves({}, 10, p), (-13.0, -8.0))
+        glide = duck[int(0.5 * sr):int(1.5 * sr)]
+        self.assertLess(float(np.abs(np.diff(glide)).max()), 0.1)
+        mid = (-13.0 + SCORE_MIX.INTENTS["blend"][0]) / 2
+        self.assertAlmostEqual(float(duck[int(1.0 * sr)]), mid, delta=0.1)
+        self.assertEqual(SCORE_MIX.depth_curves({}, [], 10, p), (-13.0, -8.0))
+
+    def test_line_intent_wins_over_ranges(self) -> None:
+        sheet = {"mix_intents": [{"t0": 0.0, "t1": 10.0, "intent": "feature", "reason": "x"}]}
+        lines = [{"at": 4.0, "dur": 2.0, "intent": "clear"}]
+        duck, _ = SCORE_MIX.depth_curves(sheet, lines, 10 * DUCKING.SR, {"duck_db": -13.0, "band_cut_db": -8.0})
+        self.assertAlmostEqual(float(duck[5 * DUCKING.SR]), -13.0, places=3)
+        self.assertAlmostEqual(float(duck[8 * DUCKING.SR]), SCORE_MIX.INTENTS["feature"][0], places=3)
+
+    def test_smooth_is_centred_and_length_preserving(self) -> None:
+        x = np.array([0.0] * 50 + [10.0] * 50)
+        y = SCORE_MIX.smooth(x, 10)
+        self.assertEqual(len(y), len(x))
+        self.assertAlmostEqual(float(y[0]), 0.0)
+        self.assertAlmostEqual(float(y[-1]), 10.0)
+        self.assertAlmostEqual(float(y[50] + y[49]), 10.0, places=6)
+
+    def test_same_source_ambience_is_muted_only_around_the_line(self) -> None:
+        sr = DUCKING.SR
+        x = np.ones(4 * sr, np.float32)
+        y, muted = SCORE_MIX.mute_spans(x, 10.0, [(11.0, 12.0)])
+        self.assertAlmostEqual(muted, 1.0, places=2)
+        self.assertEqual(float(y[int(1.5 * sr)]), 0.0)
+        self.assertEqual(float(y[int(0.5 * sr)]), 1.0)
+        self.assertEqual(float(y[int(3.0 * sr)]), 1.0)
+        self.assertGreater(float(y[int(0.97 * sr)]), 0.0)
 
 
 if __name__ == "__main__":

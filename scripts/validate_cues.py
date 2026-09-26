@@ -8,6 +8,7 @@ ERROR blocks the mix:
   - > 1.0 s of sung lyrics in the dialogue language under dialogue (Chinese lyrics under Chinese speech);
     this holds for every mix intent, feature moments included
   - a mix_intents range with an unknown intent, outside the film, or overlapping another range
+  - music inside a declared silence later than --silence-tail s after it starts (a designed tail may ring out)
 WARN needs a written reason or a fix:
   - other-language singing, or a track with unknown lyrics, under dialogue for > 0.5 s
   - lyrics under an on-screen text card, unless the cue sets "lyric_feature": true (the lyric IS the point)
@@ -18,10 +19,14 @@ WARN needs a written reason or a fix:
   - a blend/feature range without a reason (music under the voice is a deliberate choice)
   - a run of >= --card-run short text cards (each <= --card-max s, gaps <= 1 s): transitions need
     breathing room (holds, music-led interludes, J/L-cuts, longer dissolves), not a card chain
+  - pacing (provisional values from the Kailash director's cut): a text card shorter than its reading
+    time max(2.2, chars / 4.5 + 0.6) s; under --hold-min s of picture after a beat's last word;
+    >= --beat-run consecutive beats shorter than --beat-min s; a chapter that opens on a hard cut
 INFO: library usage, coverage, declared silences, same track back-to-back.
 
 film.json:  {"duration", "dialogue_language"?: "zh", "voice_spans": [{"t0", "t1"}],
-             "text_spans"?: [{"t0", "t1", "text"}]}
+             "text_spans"?: [{"t0", "t1", "text"}], "chapters"?: [{"t"}],
+             "beats"?: [{"t0", "t1", "transition_in"?: "cut|dissolve|dip|fade"}]}
 cues.json:  {"cues": [{"id", "track", "track_in", "at", "dur", "fade_in", "fade_out", "rationale",
                        "lyric_feature"?}], "silences"?: [{"t0", "t1", "reason"}],
              "mix_intents"?: [{"t0", "t1", "intent": "clear|blend|feature", "reason"}]}
@@ -77,7 +82,47 @@ def card_runs(texts, run=3, card_max=5.0, gap=1.0):
     return out
 
 
-def validate(sheet, tracks, film, min_tracks=3, max_gap=6.0, card_run=3, card_max=5.0):
+def pacing(film, beat_min=4.0, beat_run=3, hold_min=1.0):
+    """Editorial breathing-room warnings from text cards, beats, voice spans and chapters."""
+    out = []
+    cards = film.get("text_spans", [])
+    rushed = []
+    for t in cards:
+        chars = len(re.sub(r"\s", "", t.get("text", "")))
+        need = max(2.2, chars / 4.5 + 0.6)
+        if chars and t["t1"] - t["t0"] < need - 0.05:
+            rushed.append(f"{t['t0']:.1f}s {t['t1'] - t['t0']:.1f}<{need:.1f}")
+    if rushed:
+        out.append(f"{len(rushed)} of {len(cards)} text cards are shorter than their reading time "
+                   f"max(2.2, chars/4.5+0.6): " + ", ".join(rushed[:8]) + (" ..." if len(rushed) > 8 else ""))
+    beats = sorted(film.get("beats", []), key=lambda b: b["t0"])
+    voice = [(v["t0"], v["t1"]) for v in film.get("voice_spans", [])]
+    clipped = []
+    for b in beats:
+        ends = [v1 for v0, v1 in voice if b["t0"] < v1 <= b["t1"]]
+        if ends and b["t1"] - max(ends) < hold_min:
+            clipped.append(f"{b.get('id', '')}@{b['t0']:.1f}s {b['t1'] - max(ends):.1f}s")
+    if clipped:
+        out.append(f"{len(clipped)} beats cut less than {hold_min}s after their last word: "
+                   + ", ".join(clipped[:8]) + (" ..." if len(clipped) > 8 else ""))
+    run = []
+    for b in beats + [{"t0": float("inf"), "t1": float("inf")}]:
+        if b["t1"] - b["t0"] < beat_min:
+            run.append(b)
+            continue
+        if len(run) >= beat_run:
+            out.append(f"{len(run)} beats under {beat_min}s in a row {run[0]['t0']:.1f}-{run[-1]['t1']:.1f}s")
+        run = []
+    for ch in film.get("chapters", []):
+        t = ch.get("t", ch.get("t0"))
+        opener = next((b for b in beats if abs(b["t0"] - t) < 0.05), None)
+        if t and opener and opener.get("transition_in") == "cut":
+            out.append(f"chapter '{ch.get('title', '')}' at {t:.1f}s opens on a hard cut; dissolve, dip or fade in")
+    return out
+
+
+def validate(sheet, tracks, film, min_tracks=3, max_gap=6.0, card_run=3, card_max=5.0, silence_tail=2.0,
+             beat_min=4.0, beat_run=3, hold_min=1.0):
     errors, warnings, info = [], [], []
     cues = sheet["cues"]
     playable, unplayable = tracks.get("playable", {}), tracks.get("unplayable", {})
@@ -149,6 +194,11 @@ def validate(sheet, tracks, film, min_tracks=3, max_gap=6.0, card_run=3, card_ma
     for s in silences:
         if not str(s.get("reason", "")).strip():
             warnings.append(f"declared silence {s['t0']}-{s['t1']}s has no reason")
+        for c in cues:
+            late = overlap(c["at"], c["at"] + c["dur"], s["t0"] + silence_tail, s["t1"])
+            if late > 0.05:
+                errors.append(f"{c.get('id', '?')}: music plays {late:.1f}s inside declared silence "
+                              f"{s['t0']}-{s['t1']}s (only a {silence_tail}s tail may ring out)")
     for g0, g1 in gaps:
         declared = sum(overlap(g0, g1, s["t0"], s["t1"]) for s in silences)
         if declared >= 0.5 * (g1 - g0):
@@ -185,6 +235,7 @@ def validate(sheet, tracks, film, min_tracks=3, max_gap=6.0, card_run=3, card_ma
     for run in card_runs(texts, card_run, card_max):
         warnings.append(f"{len(run)} short text cards back to back {run[0][0]:.1f}-{run[-1][1]:.1f}s; give the "
                         f"transition room (hold, music-led interlude, J/L-cut, longer dissolve)")
+    warnings += pacing(film, beat_min, beat_run, hold_min)
     used = sorted({c["track"] for c in cues})
     cover = sum(1 for n in counts if n) / max(1, len(counts)) * 100
     info.append(f"distinct tracks {len(used)} of {len(playable)} playable in the library; "
@@ -206,11 +257,15 @@ def main():
     ap.add_argument("--max-gap", type=float, default=6.0, help="undeclared music-free span limit, s (default 6)")
     ap.add_argument("--card-run", type=int, default=3, help="warn on this many short cards in a row (default 3)")
     ap.add_argument("--card-max", type=float, default=5.0, help="a text card this short counts, s (default 5)")
+    ap.add_argument("--silence-tail", type=float, default=2.0, help="music allowed into a declared silence, s (default 2)")
+    ap.add_argument("--beat-min", type=float, default=4.0, help="a beat shorter than this counts as short, s (default 4)")
+    ap.add_argument("--beat-run", type=int, default=3, help="warn on this many short beats in a row (default 3)")
+    ap.add_argument("--hold-min", type=float, default=1.0, help="picture needed after a beat's last word, s (default 1)")
     ap.add_argument("--json", dest="json_out", help="write the report as JSON")
     args = ap.parse_args()
     load = lambda p: json.loads(Path(p).read_text(encoding="utf-8"))  # noqa: E731
     out = validate(load(args.cues), load(args.tracks), load(args.film), args.min_tracks, args.max_gap,
-                   args.card_run, args.card_max)
+                   args.card_run, args.card_max, args.silence_tail, args.beat_min, args.beat_run, args.hold_min)
     for key in ("errors", "warnings", "info"):
         for m in out[key]:
             print(f"{key[:-1].upper() if key != 'info' else 'INFO':7s} {m}")

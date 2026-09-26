@@ -62,7 +62,7 @@ The primary preview is Remotion Studio with the current authoritative edit state
 
 ## Skill Version
 
-0.15.0
+0.16.0
 
 ## Ethical Considerations
 
