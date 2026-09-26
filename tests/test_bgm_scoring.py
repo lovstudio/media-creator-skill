@@ -19,6 +19,7 @@ def load(name: str):
 
 VALIDATE = load("validate_cues")
 INTEL = load("intelligibility")
+CUT = load("cut_metrics")
 try:
     import numpy as np
     DUCKING = load("ducking")
@@ -150,6 +151,45 @@ class CueValidationTests(unittest.TestCase):
         film = {**FILM, "text_spans": [{"t0": a, "t1": b, "text": "card"} for a, b in cards]}
         out = run([cue("a", "instr", 0, 60)], film=film)
         self.assertTrue(any("short text cards back to back" in w for w in out["warnings"]))
+
+
+def frag_film(**extra):
+    shots = [{"t0": 0, "t1": 20, "source": "A", "captured_at": "20260918_100000"},
+             {"t0": 20, "t1": 22, "source": "A", "captured_at": "20260918_100000"},
+             {"t0": 22, "t1": 24, "black": True},
+             {"t0": 24, "t1": 26, "source": "B", "captured_at": "20260918_120000"},
+             {"t0": 26, "t1": 60, "source": "C", "captured_at": "20260918_090000"}]
+    return {"duration": 60.0, "shots": shots, "text_spans": [], "chapters": [{"t": 0}, {"t": 30}],
+            "throughline": ["one", "two"], **extra}
+
+
+class CutMetricsTests(unittest.TestCase):
+    def test_picture_metrics_merge_jump_cuts_and_count_time_jumps(self) -> None:
+        pic = CUT.measure(frag_film(), {"cues": []})["picture"]
+        self.assertEqual(pic["layers"], 3)
+        self.assertEqual(pic["jump_cuts"], 1)
+        self.assertEqual(pic["shots_under_3s"], 1)
+        self.assertEqual(pic["clip_switches"], 3)
+        self.assertEqual(pic["time_jumps_back"], 1)
+        self.assertAlmostEqual(pic["asl_s"], 20.0)
+
+    def test_track_changes_count_first_entry_and_flag_mid_scene_changes(self) -> None:
+        sheet = {"cues": [cue("a", "instr", 0, 31), cue("b", "instr2", 28, 10), cue("c", "instr", 45, 15)]}
+        mu = CUT.measure(frag_film(), sheet)["music"]
+        self.assertEqual(mu["track_changes"], 3)
+        self.assertEqual(mu["tracks"], 2)
+        self.assertEqual(mu["tracks_per_chapter"], [2, 2])
+        self.assertEqual(len(mu["changes_off_boundary"]), 1)
+        self.assertEqual(len(mu["short_change_xfades"]), 0)
+
+    def test_caps_and_baseline(self) -> None:
+        caps = dict(CUT.CAPS, min_change_xfade_s=3.0)
+        m = CUT.measure(frag_film(throughline=[]), {"cues": [cue("a", "instr", 0, 10)]})
+        names = [o["metric"] for o in CUT.check(m, caps)]
+        self.assertIn("median_cue_s", names)
+        self.assertIn("through-line sentences", names)
+        base = {"picture": {"layers": 2, "clip_switches": 3}, "music": {"cues": 1}}
+        self.assertEqual([r["metric"] for r in CUT.raised(m, base)], ["picture.layers"])
 
 
 class IntelligibilityTests(unittest.TestCase):

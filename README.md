@@ -1,6 +1,6 @@
 # 天才剪辑师 · Video Studio
 
-![Version](https://img.shields.io/badge/version-0.16.1-CC785C)
+![Version](https://img.shields.io/badge/version-0.17.0-CC785C)
 
 把 MP4 或 `.screenstudio` 源工程整理成两阶段交付：先做 Remotion Studio 与字幕审校版本，再以批准字幕生成归档母版、平台文件和正式封面图片。源工程模式保留独立屏幕、摄像头、麦克风、系统声、鼠标和快捷键事件；跨平台任务先完成并质检视频号 9:16，再顺序派生 B 站 16:9。
 
@@ -80,7 +80,8 @@ python3 scripts/iteration_plan.py plan \
 Vlog、旅行、纪录和宣传片不套用系列默认曲。用户给的曲库整体可用，不按对话里点名的几首收窄，只以成片效果取舍；
 每条 cue 写明叙事或情绪理由，同语种歌词不压对白，歌词默认避开屏幕字卡，留白写明理由。
 人声与音乐不必互斥：每个时刻选 `clear`（音乐让开）、`blend`（音乐在人声下持续在场）或 `feature`（音乐主导），
-段落之间留足气口，不用一串 3–5 秒字卡连续推进。
+段落之间留足气口，不用一串 3–5 秒字卡连续推进。局部都合规的片子仍可能碎成马赛克：以场景为单位、少换曲、
+修改只做减法，并用 `cut_metrics.py` 测量画面与配乐的碎片化（上限为暂定值，默认只报警）。
 
 ```bash
 python3 scripts/bgm_tracks.py --library MUSIC_DIR --output work/music/tracks.json --summary work/music/tracks.md
@@ -88,6 +89,7 @@ python3 scripts/validate_cues.py --cues work/music/cues.json --tracks work/music
 python3 scripts/smr_check.py --voice work/audio/voice.json --cues work/music/cues.json --tracks work/music/tracks.json
 python3 scripts/score_mix.py --voice work/audio/voice.json --cues work/music/cues.json --tracks work/music/tracks.json --out-dir work/audio/mix --stems
 python3 scripts/intelligibility.py --mix work/audio/mix/final-mix.wav --srt subs.srt --floor work/audio/mix/stem-voice.wav --output work/music/cer.json
+python3 scripts/cut_metrics.py --film work/music/film.json --cues work/music/cues.json --json work/music/cut-metrics.json
 ```
 
 门禁是防止听不清的底线，数值为校准参考：cue 表 0 ERROR；语音频段 SMR 按意图判定（`clear` 中位数 ≥ 16 dB、p10 ≥ 8 dB，
@@ -125,7 +127,7 @@ python3 scripts/intelligibility.py --mix work/audio/mix/final-mix.wav --srt subs
 - 成片可解码，画幅、帧率、编码和音频流符合目标平台。
 - Studio 是主预览，加载当前权威字幕与最终音频；需要 Subtitle Edit 时，审校 MKV 恰有一个默认 SubRip 字幕轨，回抽后与外置 SRT 逐条一致；批准前不生成平台文件。
 - 最终结果段连续且有原声；BGM 不遮挡人声或关键反馈。
-- 叙事片配乐混合多首且每条 cue 有理由；同语种歌词不压对白，按时刻声明混音意图，SMR 与 CER 底线通过，母带留到 `-3 dBTP`。
+- 叙事片配乐混合多首且每条 cue 有理由；同语种歌词不压对白，按时刻声明混音意图，SMR 与 CER 底线通过，母带留到 `-3 dBTP`；碎片化指标不超暂定上限，修改轮次不让碎片指标上升。
 - 章节标题由该幕实际内容证据归纳；知识传播类章卡默认留 1.8–2.4 秒，只显示章号和标题；顶部导航全程显示全部宏观章节。
 - 竖版章节导航、标题、网址和关键控件避开 iPhone 状态栏、刘海 / 灵动岛与平台顶部导航；安全区由统一常量驱动，并用平台实机截图复核。
 - 每个高风险切点做局部 ASR，最终连续人声做全片 ASR；不得残留独立口水词、错误重念或半句跳转。
@@ -177,7 +179,7 @@ python3 scripts/audio_qc.py --help
 python3 scripts/check_opening_still.py --help
 python3 scripts/subtitle_gate.py --help
 python3 scripts/iteration_plan.py --help
-for s in bgm_tracks validate_cues smr_check score_mix intelligibility; do python3 scripts/$s.py --help >/dev/null; done
+for s in bgm_tracks validate_cues smr_check score_mix intelligibility cut_metrics; do python3 scripts/$s.py --help >/dev/null; done
 ```
 
 ## 依赖

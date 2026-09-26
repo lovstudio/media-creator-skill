@@ -13,7 +13,7 @@ depends_on:
   - lov-branding-consistency
 metadata:
   author: contributors
-  version: "0.16.1"
+  version: "0.17.0"
   card_standard: lovstudio/skill-card/v1
   tags:
     - media-production
@@ -71,7 +71,7 @@ metadata:
 
 ### Step 0: 解析运行环境
 - 使用环境中的 `SKILL_DIR`；没有时从当前 Skill 上下文推断安装目录。
-- 先验证 `$SKILL_DIR/scripts/media_probe.py`、`timeline_check.py`、`audio_qc.py`、`check_opening_still.py`、`subtitle_gate.py`、`profile_store.py` 与 `iteration_plan.py` 是否存在；叙事片多曲配乐另验证 `bgm_tracks.py`、`validate_cues.py`、`smr_check.py`、`score_mix.py`、`intelligibility.py`。
+- 先验证 `$SKILL_DIR/scripts/media_probe.py`、`timeline_check.py`、`audio_qc.py`、`check_opening_still.py`、`subtitle_gate.py`、`profile_store.py` 与 `iteration_plan.py` 是否存在；叙事片多曲配乐另验证 `bgm_tracks.py`、`validate_cues.py`、`smr_check.py`、`score_mix.py`、`intelligibility.py`、`cut_metrics.py`。
 - 再验证 media workflow、edit manifest、audio mix、cover/title、delivery contract 与 [`references/iteration-performance.md`](references/iteration-performance.md)；Screen Studio / Remotion 项目还要读取 [`references/screen-studio-remotion-qc.md`](references/screen-studio-remotion-qc.md)。
 - 持续栏目或已有多期素材时，另外验证并读取 `$SKILL_DIR/references/project-workspace.md`。
 - 视频检查或渲染需要 `ffprobe` 与 `ffmpeg`。发布或 `platform-ready` 且没有已批准封面时，新图是必需项：立即启动封面分支。
@@ -257,7 +257,7 @@ prompt、方向稿或生成脚本时，`creative_status` 仍是 `blocked-on-cove
 4. BGM 采用淡入淡出和 ducking，避免循环接缝、突兀起音与尾部截断。具体滤镜和参数见 [`references/audio-mix.md`](references/audio-mix.md)。
 5. 若源素材本身没有可用原声，标记这一事实，不用 BGM 冒充真实反馈。
 6. **系列片默认使用已约定的 `Screen Studio Lo-fi / Bright Lounge`**：从已授权素材构建连续音乐床，不再运行或复用前作的程序合成器、`make_music.py` 或同类生成脚本；素材缺失时阻塞并报告，不得回退到程序合成或临时替代曲。
-6a. **Vlog、旅行、纪录、宣传等叙事片不套系列默认**：用户给的曲库整体可用，不按其顺口点名的几首收窄，只以成片效果取舍；按章节与情绪混合多首，每条 cue 写明叙事理由，同语种歌词不压对白，字卡下默认避开歌词，留白要声明；人声与音乐不必互斥，按时刻选 clear / blend / feature，段落过渡留足气口。
+6a. **Vlog、旅行、纪录、宣传等叙事片不套系列默认**：用户给的曲库整体可用，不按其顺口点名的几首收窄，只以成片效果取舍；按章节与情绪混合多首，每条 cue 写明叙事理由，同语种歌词不压对白，字卡下默认避开歌词，留白要声明；人声与音乐不必互斥，按时刻选 clear / blend / feature，段落过渡留足气口；以场景为单位、少换曲、修改只做减法，用 `cut_metrics.py` 量碎片化。
    `validate_cues.py`、`smr_check.py`、`intelligibility.py` 三道防听不清的客观门禁（数值是校准参考）与 `score_mix.py` 线性母带（`-3 dBTP`）见 [`references/audio-mix.md`](references/audio-mix.md) 的「叙事片多曲配乐」。
 6b. **片中念到的重点产品要做 research 再贴回画面，自研产品优先**（检索 → 官网 → 提炼当前定位
    → 截 hero/品牌资产 → 画中画停 4.5–5.5 秒）。流程、位置怎么量、以及 `$ego-browser` 的坑见
@@ -487,7 +487,7 @@ python3 "$SKILL_DIR/scripts/audio_qc.py" --help
 python3 "$SKILL_DIR/scripts/check_opening_still.py" --help
 python3 "$SKILL_DIR/scripts/subtitle_gate.py" --help
 python3 "$SKILL_DIR/scripts/iteration_plan.py" --help
-for s in bgm_tracks validate_cues smr_check score_mix intelligibility; do python3 "$SKILL_DIR/scripts/$s.py" --help >/dev/null; done
+for s in bgm_tracks validate_cues smr_check score_mix intelligibility cut_metrics; do python3 "$SKILL_DIR/scripts/$s.py" --help >/dev/null; done
 ```
 
 同时检查 `skill-card.yaml`、`skill-card.md`、`cases/cases.json` 和 `pricing-card.yaml`。至少保留一个真实 Input → Prompt → Output 案例，记录三项以上有证据的质量维度，并标明免费/付费渠道状态。

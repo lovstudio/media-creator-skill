@@ -40,6 +40,7 @@ Global, in a local Agent Skills environment on macOS, Linux or Windows.
 - Waiting UI can dominate the cut. Keep only the state signal needed for comprehension.
 - Unverified speed or publish claims can enter the title or report. Separate rendered, uploaded, published and read-back states.
 - BGM can mask speech or feedback, and a second Studio-only stem mix can diverge from the approved master. Screen recordings and knowledge series use the agreed, authorized `Screen Studio Lo-fi / Bright Lounge`; programmatic synthesis is deprecated. Narrative films score from the user's whole library with several tracks, a written reason per cue, no same-language lyrics under dialogue, a per-moment mix intent (clear, blend or feature), and intelligibility floors: cue validation, intent-aware speech-band SMR and a Whisper CER comparison with the voice-only floor. Apply ducking, fades and a linear master, then mount the same single final mix in Studio.
+- Additive revision rounds can turn a narrative cut into a mosaic of short shots and frequent music changes, even when every local gate passes. Treat the scene as the unit, write a through-line of at most five sentences, co-design cut and score so music changes only at chapter or scene boundaries, allow only subtractive fixes, and measure fragmentation with `cut_metrics.py` against the previous cut.
 - Resampling can make accelerated dialogue sound unnaturally high or low. Use pitch-preserving time-stretch, lock the result to the frame-derived sample count, and A/B it against the 1.0x source.
 - ASR mistakes can be burned into a premature final export. Preview current subtitles in Remotion Studio; create a soft-subtitle MKV only for Subtitle Edit correction, and block platform delivery until the user approves the SRT.
 - Generic or misplaced chapter labels can misrepresent the content or cut speech in half. Derive each title from segment evidence, insert chapter cards only at sentence/EDL boundaries, and recompute every downstream timestamp.
@@ -62,7 +63,7 @@ The primary preview is Remotion Studio with the current authoritative edit state
 
 ## Skill Version
 
-0.16.1
+0.17.0
 
 ## Ethical Considerations
 

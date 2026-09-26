@@ -1,5 +1,5 @@
 schema: lovstudio/skill-card/v1
-version: "0.16.1"
+version: "0.17.0"
 description: "将整场课程和多人交流精剪为独立切片，或将 MP4、Screen Studio 工程整理为 Remotion 成片，完成字幕审校、连续混音、统一包装和实际文件验收。"
 owner:
   team: "Media Creator Maintainers"
@@ -39,6 +39,8 @@ risks:
     mitigation: "将渲染、上传、发布和回读分开记录，只引用可回读证据。"
   - risk: "BGM 盖住人声、点击反馈或最终播放声音。"
     mitigation: "录屏与知识系列固定使用已授权的 Screen Studio Lo-fi / Bright Lounge；程序合成 BGM 已废弃。叙事片从用户整库选曲并混合多首，每条 cue 写理由，同语种歌词不压对白，按时刻选择 clear / blend / feature 混音意图，并以 cue 校验、按意图分档的语音频段 SMR 与 Whisper CER 底线对比防止听不清。锁定画面与口播后完成 ducking 与线性母带；Studio 主预览只挂载与批准母版同源的一条最终混音。"
+  - risk: "多轮修改只加东西，画面与配乐切来切去，每处都过局部门禁，整片却碎成马赛克、失去叙事感。"
+    mitigation: "以场景为单位并写出五句以内的主线；画面与配乐同表设计，换曲只在章节或场景边界；修改只做减法，用 cut_metrics.py 测量 ASL、短镜头、素材切换、时间倒跳、cue 与换曲次数，并与上一版对比。"
   - risk: "对 AAC/M4S 逐片段粗定位，或为每个片段重建媒体元素，造成口水词残留、完整词被切坏和播放卡顿。"
     mitigation: "麦克风先解码为 PCM 再样本级剪辑；各 channel 生成一条连续代理轨，Remotion 只改变布局与包装。"
   - risk: "字幕、布局、BGM 或封面微调仍重建五轨和整片，导致一轮反馈等待一到两小时。"
