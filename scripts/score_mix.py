@@ -3,7 +3,15 @@
 
 Voice lines are gain-matched to --voice-lufs and peak-limited. Music cues are cut from the analyzed
 library (bgm_tracks.py), loudness-matched with level_db, faded, automated with env points and ducked
-by the voice bus (ducking.py). Ducking depth follows the director's mix intent per moment:
+by the voice bus (ducking.py).
+
+level_db = 0 puts the audible RMS of the level reference at --music-ref. The reference is the cue's own
+excerpt by default ("cue"), which lifts a cue that only uses a quiet intro to chorus level; "track"
+measures the whole track and [t0, t1] a window of it (track seconds), so such a cue keeps the track's
+own dynamics. Set level_ref per cue, sheet-wide, or with --level-ref: the cue's value wins, then
+--level-ref, then the sheet's.
+
+Ducking depth follows the director's mix intent per moment:
 clear (music steps back, default), blend (music stays present under the voice) or feature (music
 leads and the voice rides on top); intents glide over a 0.8 s centred average, never as gain steps,
 and a line's own intent (from the beat that owns it) wins over the ranges, so a J-cut keeps its depth.
@@ -22,7 +30,9 @@ voice.json (paths resolve relative to the file):
                               "intent"?}],
    "ambient": [{"file", "at", "dur", "ss"?, "level_db"?, "source"?}]}
 cues.json:  {"cues": [{"id", "track", "track_in", "at", "dur", "level_db" | "gain_db",
+                       "level_ref"?: "cue" | "track" | [t0, t1],
                        "fade_in"?, "fade_out"?, "env"?: [[t_rel, db], ...], "rationale"}],
+             "level_ref"?: "cue" | "track",
              "mix_intents"?: [{"t0", "t1", "intent": "clear|blend|feature", "reason",
                                "duck_db"?, "band_cut_db"?}]}
 """
@@ -82,6 +92,26 @@ def rms_db(x):
     return float(20 * np.log10(np.sqrt(np.mean(np.square(x))) + 1e-9))
 
 
+def audible_rms_db(x):
+    """RMS dBFS of the samples above -80 dBFS of a stereo excerpt folded to mono."""
+    mono = x.mean(1)
+    act = mono[np.abs(mono) > 1e-4]
+    return rms_db(act if len(act) else mono)
+
+
+def level_window(ref, track):
+    """(ss, dur) of the track audio that level_db is measured on; None means the cue's own excerpt."""
+    if ref == "cue":
+        return None
+    if ref == "track":
+        return 0.0, float(track["duration"])
+    if (isinstance(ref, (list, tuple)) and len(ref) == 2 and all(isinstance(v, (int, float)) for v in ref)
+            and 0 <= ref[0] < ref[1] <= track["duration"] + 0.05):
+        return float(ref[0]), float(ref[1] - ref[0])
+    raise SystemExit(f"level_ref {ref!r}: use 'cue', 'track' or [t0, t1] inside the track "
+                     f"(0-{track['duration']}s)")
+
+
 def measure_i_tp(path):
     """Integrated loudness (LUFS) and true peak (dBTP) from ffmpeg ebur128."""
     r = subprocess.run(["ffmpeg", "-hide_banner", "-nostdin", "-i", str(path), "-af", "ebur128=peak=true",
@@ -110,6 +140,9 @@ def add_mix_args(p):
     p.add_argument("--voice-limit", type=float, default=-6.0, help="voice bus peak ceiling, dBFS")
     p.add_argument("--music-ref", type=float, default=-27.0,
                    help="RMS dBFS of a level_db=0 music bed before ducking (default -27)")
+    p.add_argument("--level-ref", choices=("cue", "track"),
+                   help="what level_db is measured on for cues without their own level_ref: the cue's excerpt "
+                        "or the whole track (sheet value, else cue)")
     p.add_argument("--duck-db", type=float, help="clear-intent broadband duck under speech (sheet value, else -13)")
     p.add_argument("--band-cut-db", type=float, help="clear-intent extra 500-3000 Hz duck (sheet value, else -8)")
     p.add_argument("--ambient-limit", type=float, default=-10.0,
@@ -122,6 +155,7 @@ def mix_params(args, sheet):
         "voice_limit": args.voice_limit, "music_ref": args.music_ref, "ambient_limit": args.ambient_limit,
         "duck_db": args.duck_db if args.duck_db is not None else sheet.get("duck_db", -13.0),
         "band_cut_db": args.band_cut_db if args.band_cut_db is not None else sheet.get("band_cut_db", -8.0),
+        "level_ref": args.level_ref or sheet.get("level_ref", "cue"),
     }
 
 
@@ -221,12 +255,21 @@ def build_buses(voice_path, sheet, tracks, p, ambient=True):
         amb, agr = ducking.peak_limit(amb, p["ambient_limit"])
         report["ambient_limiter_max_gr_db"] = round(agr, 1)
     playable = tracks["playable"]
+    ref_levels = {}
     for c in sheet["cues"]:
-        x = decode(playable[c["track"]]["file"], ch=2, ss=c["track_in"], dur=c["dur"])
+        tr = playable[c["track"]]
+        x = decode(tr["file"], ch=2, ss=c["track_in"], dur=c["dur"])
+        ref, ref_db = None, None
         if "level_db" in c:
-            mono = x.mean(1)
-            act = mono[np.abs(mono) > 1e-4]
-            g = float(np.clip(p["music_ref"] + c["level_db"] - rms_db(act if len(act) else mono), -30, 18))
+            ref = c.get("level_ref", p.get("level_ref", "cue"))
+            win = level_window(ref, tr)
+            if win is None:
+                ref_db = audible_rms_db(x)
+            else:
+                if (c["track"], win) not in ref_levels:
+                    ref_levels[c["track"], win] = audible_rms_db(decode(tr["file"], ch=2, ss=win[0], dur=win[1]))
+                ref_db = ref_levels[c["track"], win]
+            g = float(np.clip(p["music_ref"] + c["level_db"] - ref_db, -30, 18))
         else:
             g = float(c.get("gain_db", c.get("gain", 0.0)))
         x = x * 10 ** (g / 20)
@@ -235,7 +278,8 @@ def build_buses(voice_path, sheet, tracks, p, ambient=True):
             env = np.interp(np.arange(len(x)) / SR, pts[:, 0], pts[:, 1])
             x = (x.T * (10 ** (env / 20)).astype(np.float32)).T
         place(music, ramp(x, c.get("fade_in", 1.5), c.get("fade_out", 2.5)), c["at"])
-        report["music"].append({"id": c.get("id"), "track": c["track"], "at": c["at"], "gain_db": round(g, 1)})
+        report["music"].append({"id": c.get("id"), "track": c["track"], "at": c["at"], "gain_db": round(g, 1),
+                                "level_ref": ref, "ref_rms_db": None if ref_db is None else round(ref_db, 1)})
     voice, gr = ducking.peak_limit(voice, p["voice_limit"])
     report["voice_limiter_max_gr_db"] = round(gr, 1)
     duck_db, band_cut_db = depth_curves(sheet, report["voice"], n, p)

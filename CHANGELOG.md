@@ -1,5 +1,31 @@
 # Changelog
 
+## [0.19.0] - 2026-09-27
+
+### Added
+
+- validate_cues.py 新增 cue 级歌词放行字段 lyric_override: {reason, author_quote}：作者明确点名该曲垫对白、或明确说不为口播停歌时，同语种歌词压对白从 ERROR 降为 INFO，输出新增 released 列表（cue、合并后的冲突区间、秒数、理由、作者原话），直接作为交付报告的放行清单；缺理由或原话仍判 ERROR，lyric_override: true 这类简写不放行。
+- validate_cues.py 新增 --preset narrative：未声明无乐段上限默认 2 秒，对应叙事 vlog 配乐从头连到尾；显式 --max-gap 仍优先，不带预设时保持 6 秒。
+- cut_metrics.py 的 shots 支持 "flashback": true：回忆段镜头不计入拍摄时间倒跳，之后从最后一个当下镜头接着算（回忆段后的真实倒跳仍计入），另报 flashbacks 段数。
+- score_mix.py 的 level_db 新增电平基准 level_ref："cue"（默认，按 cue 截取片段，行为不变）、"track"（整首）或 [t0, t1]（曲内参考窗口）；可写在 cue 上、表头或用 --level-ref cue|track 指定（smr_check.py 通用），整首与窗口电平按曲目缓存只解码一次；mix-report.json 每条 music 记录 level_ref 与 ref_rms_db。
+- tests/test_bgm_scoring.py 新增 11 个测试：歌词放行与不完整放行、叙事预设（含 CLI 端到端与 --max-gap 覆盖）、回忆段倒跳、换曲交叉淡化默认值、level_ref 窗口解析、优先级与实际增益。
+
+### Changed
+
+- cut_metrics.py 的 --min-change-xfade-s 默认从 3 秒改为 1 秒，与 validate_cues.py 的交叉淡化下限一致。依据是作者接受的冈仁波齐终版：10 次换曲交接为 1.0–3.0 秒（中位 1.5 秒），旧默认对其中 9 次报 WARN。v0.4 计划里的 3 秒只作设计起点，要按它查时显式传 --min-change-xfade-s 3。
+- 文档同步：audio-mix 的歌词放行、断档检查、换曲交叉淡化、数据契约、level_db 基准、门禁命令与通过标准；narrative-vlog 的回忆段；delivery-contract 的 audio_status；SKILL.md 与 README 补上 lyric_override 与 --preset narrative。SKILL.md 全部为同行替换，仍为 499 行。0.18.0 Known limitations 的前三条已解决。
+
+### Verification
+
+- 在冈仁波齐终版（v0.8，827 秒，11 条 cue）上只读回归，输出只写临时目录，项目文件未改动：原 cue 表仍报同样 4 条同语种歌词 ERROR（向后兼容）；副本加 lyric_override 后 0 ERROR，4 条进入 released；--preset narrative 不报断档（终版最长无乐 0.2 秒）；cut_metrics.py 新默认下换曲交叉淡化告警从 9 条降为 0；按整首测电平时，只用前 70 秒的 M2-day1 比按片段测低 6.8 dB，M1n-night 低 4.4 dB。
+- 62 个单测全部通过；validate_skill.py 通过。
+
+### Known limitations
+
+- level_ref 默认仍是 "cue"，保证旧 cue 表的混音不变；只截安静局部的 cue 要显式写 "track" 或参考窗口。validate_cues.py 不检查 level_ref，写错时 score_mix.py 与 smr_check.py 会带说明退出。
+- intelligibility.py 还不读 released，放行句按组求 CER 均值仍需手工按区间挑句。
+- 360、平台码率与审片页里的数值只来自一台双鱼眼相机、一部片和当时的宿主工具，换机型、ffmpeg 版本或宿主都要重测。SKILL.md 为 499 行，已贴近 500 行上限。
+
 ## [0.18.0] - 2026-09-27
 
 吸收《我所看见的冈仁波齐》转山 vlog 的创作经验：旅行叙事片、360 重投影、横竖双平台派生与发布前隐私扫描。

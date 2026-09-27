@@ -152,6 +152,55 @@ class CueValidationTests(unittest.TestCase):
         out = run([cue("a", "instr", 0, 60)], film=film)
         self.assertTrue(any("short text cards back to back" in w for w in out["warnings"]))
 
+    def test_lyric_override_releases_same_language_clash_as_info(self) -> None:
+        override = {"reason": "author asked for this song under the opening lines",
+                    "author_quote": "不必为了口播而刻意停止 bgm"}
+        out = run([cue("a", "zh_song", 10, 50, lyric_override=override)])
+        self.assertEqual(out["errors"], [])
+        self.assertTrue(any("released by the author" in i and "不必为了口播" in i for i in out["info"]))
+        self.assertEqual(out["released"], [{"cue": "a", "track": "zh_song", "seconds": 8.0,
+                                            "spans": [[10.0, 18.0]], "reason": override["reason"],
+                                            "author_quote": override["author_quote"]}])
+
+    def test_incomplete_lyric_override_stays_an_error(self) -> None:
+        for override in ({"reason": "author likes it"}, {"reason": " ", "author_quote": "ok"}, True):
+            out = run([cue("a", "zh_song", 10, 50, lyric_override=override)])
+            self.assertTrue(any("needs both reason and author_quote" in e for e in out["errors"]), override)
+            self.assertEqual(out["released"], [])
+
+    def test_sheet_without_overrides_reports_no_releases(self) -> None:
+        out = run([cue("a", "zh_song", 10, 50)])
+        self.assertEqual(out["released"], [])
+        self.assertFalse(any("needs both" in e for e in out["errors"]))
+
+    def test_narrative_preset_tightens_the_music_gap(self) -> None:
+        cues = [cue("a", "instr", 0, 20), cue("b", "instr2", 23, 37)]
+        self.assertFalse(any("music-free" in w for w in run(cues)["warnings"]))
+        sheet = {"cues": cues}
+        narrative = VALIDATE.validate(sheet, TRACKS, FILM, min_tracks=1,
+                                      max_gap=VALIDATE.PRESETS["narrative"]["max_gap"])
+        self.assertTrue(any("music-free span 20.0-23.0s" in w for w in narrative["warnings"]))
+
+    def test_cli_preset_sets_the_default_gap_and_max_gap_still_wins(self) -> None:
+        import json
+        import subprocess
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            d = Path(tmp)
+            sheet = {"cues": [cue("a", "instr", 0, 20), cue("b", "instr2", 23, 37), cue("c", "instr3", 40, 20)]}
+            for name, data in (("cues", sheet), ("tracks", TRACKS), ("film", FILM)):
+                (d / f"{name}.json").write_text(json.dumps(data), encoding="utf-8")
+
+            def gaps(*extra):
+                subprocess.run([sys.executable, str(SCRIPTS / "validate_cues.py"), "--cues", str(d / "cues.json"),
+                                "--tracks", str(d / "tracks.json"), "--film", str(d / "film.json"),
+                                "--json", str(d / "out.json"), *extra], check=True, capture_output=True)
+                out = json.loads((d / "out.json").read_text(encoding="utf-8"))
+                return [w for w in out["warnings"] if "music-free" in w]
+            self.assertEqual(gaps(), [])
+            self.assertEqual(len(gaps("--preset", "narrative")), 1)
+            self.assertEqual(gaps("--preset", "narrative", "--max-gap", "6"), [])
+
 
 def frag_film(**extra):
     shots = [{"t0": 0, "t1": 20, "source": "A", "captured_at": "20260918_100000"},
@@ -190,6 +239,32 @@ class CutMetricsTests(unittest.TestCase):
         self.assertIn("through-line sentences", names)
         base = {"picture": {"layers": 2, "clip_switches": 3}, "music": {"cues": 1}}
         self.assertEqual([r["metric"] for r in CUT.raised(m, base)], ["picture.layers"])
+
+    def test_flashback_shots_are_not_time_jumps(self) -> None:
+        def film(flag, after="20260918_103000"):
+            shots = [{"t0": 0, "t1": 20, "source": "A", "captured_at": "20260918_100000"},
+                     {"t0": 20, "t1": 30, "source": "F1", "captured_at": "20181002_100734", "flashback": flag},
+                     {"t0": 30, "t1": 40, "source": "F2", "captured_at": "20181002_212402", "flashback": flag},
+                     {"t0": 40, "t1": 60, "source": "B", "captured_at": after}]
+            return {"duration": 60.0, "shots": shots, "throughline": ["one"]}
+        plain = CUT.measure(film(False), {"cues": []})["picture"]
+        self.assertEqual((plain["time_jumps_back"], plain["flashbacks"]), (1, 0))
+        memory = CUT.measure(film(True), {"cues": []})["picture"]
+        self.assertEqual((memory["time_jumps_back"], memory["flashbacks"]), (0, 1))
+        self.assertEqual(memory["clip_switches"], 4)
+        # the count resumes from the last present-day shot, so a real jump after the memory still counts
+        back = CUT.measure(film(True, after="20260918_080000"), {"cues": []})["picture"]
+        self.assertEqual(back["time_jumps_back"], 1)
+
+    def test_default_change_xfade_accepts_the_kailash_handoffs(self) -> None:
+        # handoffs of the accepted Kailash final ran 1-3 s (median 1.5 s)
+        sheet = {"cues": [cue("a", "instr", 0, 31), cue("b", "instr2", 30, 16.5),
+                          cue("c", "instr3", 45, 15)]}
+        self.assertEqual(CUT.MIN_CHANGE_XFADE_S, 1.0)
+        self.assertEqual(CUT.measure(frag_film(), sheet)["music"]["short_change_xfades"], [])
+        self.assertEqual(len(CUT.measure(frag_film(), sheet, min_xfade=3.0)["music"]["short_change_xfades"]), 2)
+        abrupt = {"cues": [cue("a", "instr", 0, 30.4), cue("b", "instr2", 30, 30)]}
+        self.assertEqual(CUT.measure(frag_film(), abrupt)["music"]["short_change_xfades"], ["a->b 0.4s"])
 
 
 class IntelligibilityTests(unittest.TestCase):
@@ -285,6 +360,72 @@ class DuckingTests(unittest.TestCase):
         self.assertEqual(float(y[int(0.5 * sr)]), 1.0)
         self.assertEqual(float(y[int(3.0 * sr)]), 1.0)
         self.assertGreater(float(y[int(0.97 * sr)]), 0.0)
+
+
+@unittest.skipIf(SCORE_MIX is None, "numpy is not installed")
+class LevelRefTests(unittest.TestCase):
+    """A track with a 5 s intro at -40 dBFS and a 15 s body at -20 dBFS (constant samples, exact RMS)."""
+
+    P = {"voice_lufs": -20.0, "max_voice_boost": 14.0, "voice_limit": -6.0, "music_ref": -27.0,
+         "ambient_limit": -10.0, "duck_db": -13.0, "band_cut_db": -8.0, "level_ref": "cue"}
+    TRACK = {"file": "song.wav", "duration": 20.0}
+
+    def fake_decode(self, path, ch=1, ss=None, dur=None, af=None):
+        self.decoded.append((ss, dur))
+        sr = SCORE_MIX.SR
+        full = np.concatenate([np.full(5 * sr, 0.01), np.full(15 * sr, 0.1)]).astype(np.float32)
+        i = int(round((ss or 0.0) * sr))
+        x = full[i:] if dur is None else full[i:i + int(round(dur * sr))]
+        return np.stack([x, x], 1) if ch == 2 else x
+
+    def gains(self, cues, **sheet):
+        import json
+        import tempfile
+        from unittest import mock
+        self.decoded = []
+        with tempfile.TemporaryDirectory() as tmp:
+            voice = Path(tmp) / "voice.json"
+            voice.write_text(json.dumps({"duration": 5.0, "lines": []}), encoding="utf-8")
+            p = dict(self.P, level_ref=sheet.pop("level_ref", "cue"))
+            with mock.patch.object(SCORE_MIX, "decode", self.fake_decode):
+                report = SCORE_MIX.build_buses(voice, {"cues": cues, **sheet}, {"playable": {"song": self.TRACK}},
+                                               p, ambient=False)[4]
+        return {m["id"]: m["gain_db"] for m in report["music"]}
+
+    def test_level_window(self) -> None:
+        self.assertIsNone(SCORE_MIX.level_window("cue", self.TRACK))
+        self.assertEqual(SCORE_MIX.level_window("track", self.TRACK), (0.0, 20.0))
+        self.assertEqual(SCORE_MIX.level_window([5, 20], self.TRACK), (5.0, 15.0))
+        for bad in ("loud", [20, 5], [0, 99], [1], ["a", "b"]):
+            with self.assertRaises(SystemExit, msg=bad):
+                SCORE_MIX.level_window(bad, self.TRACK)
+
+    def test_quiet_intro_keeps_the_track_dynamics(self) -> None:
+        intro = {"track": "song", "track_in": 0.0, "at": 0.0, "dur": 4.0, "level_db": 0.0}
+        g = self.gains([{**intro, "id": "cue"}, {**intro, "id": "track", "level_ref": "track"},
+                        {**intro, "id": "window", "level_ref": [5, 20]},
+                        {**{k: v for k, v in intro.items() if k != "level_db"}, "id": "abs", "gain_db": -9.0}])
+        self.assertEqual(g["cue"], 13.0)  # the old behaviour: the -40 dBFS intro is lifted to -27
+        self.assertEqual(g["track"], -5.8)  # whole-track RMS is -21.2 dBFS
+        self.assertEqual(g["window"], -7.0)  # the -20 dBFS body
+        self.assertEqual(g["abs"], -9.0)
+
+    def test_sheet_level_ref_applies_to_cues_without_their_own(self) -> None:
+        intro = {"track": "song", "track_in": 0.0, "at": 0.0, "dur": 4.0, "level_db": 0.0}
+        g = self.gains([{**intro, "id": "a"}, {**intro, "id": "b", "track_in": 1.0},
+                        {**intro, "id": "c", "level_ref": "cue"}], level_ref="track")
+        self.assertEqual((g["a"], g["b"], g["c"]), (-5.8, -5.8, 13.0))
+        self.assertEqual(self.decoded.count((0.0, 20.0)), 1)  # the whole track is measured once
+
+    def test_level_ref_precedence(self) -> None:
+        import argparse
+        ap = argparse.ArgumentParser()
+        SCORE_MIX.add_mix_args(ap)
+        base = ["--voice", "v.json", "--cues", "c.json", "--tracks", "t.json"]
+        pick = lambda argv, sheet: SCORE_MIX.mix_params(ap.parse_args(base + argv), sheet)["level_ref"]  # noqa: E731
+        self.assertEqual(pick([], {}), "cue")
+        self.assertEqual(pick([], {"level_ref": "track"}), "track")
+        self.assertEqual(pick(["--level-ref", "cue"], {"level_ref": "track"}), "cue")
 
 
 if __name__ == "__main__":

@@ -59,7 +59,7 @@ opening_still_hold: 1.5s
 - `delivery_status=blocked-on-subtitle-approval`：平台文件不得生成或交接；
 - `delivery_status=approved-master-ready`：批准字幕已进入归档母版且质检通过；尚未请求或生成平台文件；
 - `delivery_status=platform-ready`：批准字幕已按目标平台方式封装或烧录并通过质检；
-- `audio_status=passed`：原声保护、混音、响度和峰值检查通过；叙事片多曲配乐还要求 `cue-check.json` 0 ERROR（作者放行的同语种歌词冲突除外：须列在报告放行清单并附作者原话，放行句按组求 CER 均值对比纯人声底线，逐句只排抽听顺序并附抽听结论）、`smr.json` 全部通过、`cer.json` 的全片均值未超过纯人声底线的允许差值，音乐 stem 无 2 秒以上非作者要求的断档；
+- `audio_status=passed`：原声保护、混音、响度和峰值检查通过；叙事片多曲配乐还要求 `cue-check.json` 0 ERROR（作者放行的同语种歌词冲突在 cue 上写 `lyric_override`，报 INFO，`released` 即报告放行清单的来源，须附作者原话，放行句按组求 CER 均值对比纯人声底线，逐句只排抽听顺序并附抽听结论）、`smr.json` 全部通过、`cer.json` 的全片均值未超过纯人声底线的允许差值，音乐 stem 无 2 秒以上非作者要求的断档；
 - `creative_status=passed`：标题、封面、叙事结构和证据段完成；
 - `cover_status=missing`：没有封面图片；`brief-only`：只有方向稿；`rendered`：已出图但尚未完成
   尺寸、安全区、四边条带和目视检查；`approved`：所有目标槽位的正式图片均已验收；

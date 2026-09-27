@@ -13,7 +13,7 @@ depends_on:
   - lov-branding-consistency
 metadata:
   author: contributors
-  version: "0.18.0"
+  version: "0.19.0"
   card_standard: lovstudio/skill-card/v1
   tags:
     - media-production
@@ -257,8 +257,8 @@ prompt、方向稿或生成脚本时，`creative_status` 仍是 `blocked-on-cove
 4. BGM 采用淡入淡出和 ducking，避免循环接缝、突兀起音与尾部截断。具体滤镜和参数见 [`references/audio-mix.md`](references/audio-mix.md)。
 5. 若源素材本身没有可用原声，标记这一事实，不用 BGM 冒充真实反馈。
 6. **系列片默认使用已约定的 `Screen Studio Lo-fi / Bright Lounge`**：从已授权素材构建连续音乐床，不再运行或复用前作的程序合成器、`make_music.py` 或同类生成脚本；素材缺失时阻塞并报告，不得回退到程序合成或临时替代曲。
-6a. **Vlog、旅行、纪录、宣传等叙事片不套系列默认**：用户给的曲库整体可用，不按其顺口点名的几首收窄；作者点名的曲目先按其建议位置试，按章节与当时的真实心境混合多首，每条 cue 写明叙事理由。配乐默认从头连到尾、一首放到下一首接手，口播只压低不停歌（叙事片不适用上文第 3 条与 audio-mix「基本策略」的暂时静音），静默只给作者要求的段落，交付前扫音乐 stem 上 2 秒以上的断档；同语种歌词默认不压对白，只有作者明确点名该曲垫对白或明确说不为口播停歌时有条件放行，cue 上记理由与作者原话，放行句按组求 CER 均值对比纯人声底线、逐句只排抽听顺序；字卡下默认避开歌词；人声与音乐不必互斥，按时刻选 clear / blend / feature，段落过渡留足气口；以场景为单位、少换曲，agent 自发的修改只做减法，用 `cut_metrics.py` 量碎片化。字卡、照片、口播剪点与人物口径见 [`references/narrative-vlog.md`](references/narrative-vlog.md)。
-   `validate_cues.py`、`smr_check.py`、`intelligibility.py` 三道防听不清的客观门禁（数值是校准参考）与 `score_mix.py` 线性母带（`-3 dBTP`）见 [`references/audio-mix.md`](references/audio-mix.md) 的「叙事片多曲配乐」。
+6a. **Vlog、旅行、纪录、宣传等叙事片不套系列默认**：用户给的曲库整体可用，不按其顺口点名的几首收窄；作者点名的曲目先按其建议位置试，按章节与当时的真实心境混合多首，每条 cue 写明叙事理由。配乐默认从头连到尾、一首放到下一首接手，口播只压低不停歌（叙事片不适用上文第 3 条与 audio-mix「基本策略」的暂时静音），静默只给作者要求的段落，交付前扫音乐 stem 上 2 秒以上的断档；同语种歌词默认不压对白，只有作者明确点名该曲垫对白或明确说不为口播停歌时有条件放行，cue 上用 `lyric_override` 记理由与作者原话，放行句按组求 CER 均值对比纯人声底线、逐句只排抽听顺序；字卡下默认避开歌词；人声与音乐不必互斥，按时刻选 clear / blend / feature，段落过渡留足气口；以场景为单位、少换曲，agent 自发的修改只做减法，用 `cut_metrics.py` 量碎片化。字卡、照片、口播剪点与人物口径见 [`references/narrative-vlog.md`](references/narrative-vlog.md)。
+   `validate_cues.py --preset narrative`、`smr_check.py`、`intelligibility.py` 三道防听不清的客观门禁（数值是校准参考）与 `score_mix.py` 线性母带（`-3 dBTP`）见 [`references/audio-mix.md`](references/audio-mix.md) 的「叙事片多曲配乐」。
 6b. **片中念到的重点产品要做 research 再贴回画面，自研产品优先**（检索 → 官网 → 提炼当前定位
    → 截 hero/品牌资产 → 画中画停 4.5–5.5 秒）。流程、位置怎么量、以及 `$ego-browser` 的坑见
    [`references/pip-research.md`](references/pip-research.md)。

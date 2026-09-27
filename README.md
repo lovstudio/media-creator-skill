@@ -1,6 +1,6 @@
 # 天才剪辑师 · Video Studio
 
-![Version](https://img.shields.io/badge/version-0.18.0-CC785C)
+![Version](https://img.shields.io/badge/version-0.19.0-CC785C)
 
 把 MP4 或 `.screenstudio` 源工程整理成两阶段交付：先做 Remotion Studio 与字幕审校版本，再以批准字幕生成归档母版、平台文件和正式封面图片。源工程模式保留独立屏幕、摄像头、麦克风、系统声、鼠标和快捷键事件；跨平台任务先完成并质检视频号 9:16，再顺序派生 B 站 16:9。
 
@@ -80,7 +80,7 @@ python3 scripts/iteration_plan.py plan \
 Vlog、旅行、纪录和宣传片不套用系列默认曲。用户给的曲库整体可用，不按对话里点名的几首收窄，只以成片效果取舍；
 作者点名的曲目先按作者建议的位置试，选曲按这一段当时的真实心境。每条 cue 写明叙事或情绪理由；配乐默认从头连到尾，
 一首放到下一首接手，口播只压低不停歌，静默只给作者要求的段落，交付前扫音乐 stem 上 2 秒以上的断档。同语种歌词
-默认不压对白，只有作者明确点名该曲垫对白、或明确说不为口播停歌时才有条件放行：cue 上记理由与作者原话，放行句
+默认不压对白，只有作者明确点名该曲垫对白、或明确说不为口播停歌时才有条件放行：cue 上用 `lyric_override` 记理由与作者原话，放行句
 按组求 CER 均值对比纯人声底线，逐句差值只排抽听顺序；歌词默认避开屏幕字卡。
 人声与音乐不必互斥：每个时刻选 `clear`（音乐让开）、`blend`（音乐在人声下持续在场）或 `feature`（音乐主导），
 段落之间留足气口，不用一串 3–5 秒字卡连续推进。局部都合规的片子仍可能碎成马赛克：以场景为单位、少换曲、
@@ -88,14 +88,14 @@ agent 自发的修改只做减法（作者点名的补充照做并记录），�
 
 ```bash
 python3 scripts/bgm_tracks.py --library MUSIC_DIR --output work/music/tracks.json --summary work/music/tracks.md
-python3 scripts/validate_cues.py --cues work/music/cues.json --tracks work/music/tracks.json --film work/music/film.json
+python3 scripts/validate_cues.py --preset narrative --cues work/music/cues.json --tracks work/music/tracks.json --film work/music/film.json
 python3 scripts/smr_check.py --voice work/audio/voice.json --cues work/music/cues.json --tracks work/music/tracks.json
 python3 scripts/score_mix.py --voice work/audio/voice.json --cues work/music/cues.json --tracks work/music/tracks.json --out-dir work/audio/mix --stems
 python3 scripts/intelligibility.py --mix work/audio/mix/final-mix.wav --srt subs.srt --floor work/audio/mix/stem-voice.wav --output work/music/cer.json
 python3 scripts/cut_metrics.py --film work/music/film.json --cues work/music/cues.json --json work/music/cut-metrics.json
 ```
 
-门禁是防止听不清的底线，数值为校准参考：cue 表 0 ERROR（作者放行的歌词冲突除外，列入放行清单）；语音频段 SMR 按意图判定（`clear` 中位数 ≥ 16 dB、p10 ≥ 8 dB，
+门禁是防止听不清的底线，数值为校准参考：cue 表 0 ERROR（作者放行的歌词冲突写 `lyric_override`，报 INFO 并列入放行清单）；语音频段 SMR 按意图判定（`clear` 中位数 ≥ 16 dB、p10 ≥ 8 dB，
 `blend` 中位数 ≥ 10 dB、p10 ≥ 4 dB，`feature` 只记录）；逐条字幕切片转写的平均 CER 比纯人声底线高出不超过 0.02；
 母带线性处理到 `-16 LUFS-I / -3 dBTP`，给 AAC 编码后的峰值回升留余量。数据格式与规则见
 [`references/audio-mix.md`](references/audio-mix.md)。
@@ -146,7 +146,7 @@ python3 scripts/cut_metrics.py --film work/music/film.json --cues work/music/cue
 - 成片可解码，画幅、帧率、编码和音频流符合目标平台。
 - Studio 是主预览，加载当前权威字幕与最终音频；需要 Subtitle Edit 时，审校 MKV 恰有一个默认 SubRip 字幕轨，回抽后与外置 SRT 逐条一致；批准前不生成平台文件。
 - 最终结果段连续且有原声；BGM 不遮挡人声或关键反馈。
-- 叙事片配乐混合多首且每条 cue 有理由；配乐从头连到尾、音乐 stem 无 2 秒以上断档，口播只压低不停歌；同语种歌词默认不压对白，作者明确放行的冲突在 cue 上记理由与作者原话并列入报告，放行句按组求 CER 均值对比纯人声底线；按时刻声明混音意图，SMR 与全片 CER 底线通过，母带留到 `-3 dBTP`；碎片化指标对照暂定上限报告，agent 自发的修改不让碎片指标上升。
+- 叙事片配乐混合多首且每条 cue 有理由；配乐从头连到尾、音乐 stem 无 2 秒以上断档，口播只压低不停歌；同语种歌词默认不压对白，作者明确放行的冲突在 cue 的 `lyric_override` 上记理由与作者原话并列入报告，放行句按组求 CER 均值对比纯人声底线；按时刻声明混音意图，SMR 与全片 CER 底线通过，母带留到 `-3 dBTP`；碎片化指标对照暂定上限报告，agent 自发的修改不让碎片指标上升。
 - 首个平台发布前在编码成片上做隐私扫描（检测器逐帧、人工联系表不低于 5 fps）；已发布版本发现瑕疵时的处理见 [`references/delivery-contract.md`](references/delivery-contract.md)「发布前隐私扫描」。
 - 章节标题由该幕实际内容证据归纳；知识传播类章卡默认留 1.8–2.4 秒，只显示章号和标题；顶部导航全程显示全部宏观章节。
 - 竖版章节导航、标题、网址和关键控件避开 iPhone 状态栏、刘海 / 灵动岛与平台顶部导航；安全区由统一常量驱动，并用平台实机截图复核。

@@ -6,7 +6,10 @@ ERROR blocks the mix:
   - a cue without a story/emotion rationale
   - more than 2 cues sounding at once
   - > 1.0 s of sung lyrics in the dialogue language under dialogue (Chinese lyrics under Chinese speech);
-    this holds for every mix intent, feature moments included
+    this holds for every mix intent, feature moments included. The one exception is a cue carrying
+    "lyric_override": {"reason", "author_quote"} because the author explicitly asked for this song under
+    the dialogue, or said not to stop the music for speech: the clash is then INFO and listed in
+    "released" (cue, clash spans, reason, author quote) for the report's release list
   - a mix_intents range with an unknown intent, outside the film, or overlapping another range
   - music inside a declared silence later than --silence-tail s after it starts (a designed tail may ring out)
 WARN needs a written reason or a fix:
@@ -15,6 +18,7 @@ WARN needs a written reason or a fix:
   - overlapping cues that are not a real cross-fade (overlap >= 1.0 s, both sides faded)
   - entry/exit inside a loud passage of the track with a fade < 2 s
   - a music-free span longer than --max-gap that is not declared in "silences" with a reason
+    (6 s by default; 2 s with --preset narrative, where the score runs continuously)
   - fewer distinct tracks than --min-tracks
   - a blend/feature range without a reason (music under the voice is a deliberate choice)
   - a run of >= --card-run short text cards (each <= --card-max s, gaps <= 1 s): transitions need
@@ -28,7 +32,8 @@ film.json:  {"duration", "dialogue_language"?: "zh", "voice_spans": [{"t0", "t1"
              "text_spans"?: [{"t0", "t1", "text"}], "chapters"?: [{"t"}],
              "beats"?: [{"t0", "t1", "transition_in"?: "cut|dissolve|dip|fade"}]}
 cues.json:  {"cues": [{"id", "track", "track_in", "at", "dur", "fade_in", "fade_out", "rationale",
-                       "lyric_feature"?}], "silences"?: [{"t0", "t1", "reason"}],
+                       "lyric_feature"?, "lyric_override"?: {"reason", "author_quote"}}],
+             "silences"?: [{"t0", "t1", "reason"}],
              "mix_intents"?: [{"t0", "t1", "intent": "clear|blend|feature", "reason"}]}
 """
 import argparse
@@ -36,6 +41,10 @@ import json
 import re
 import sys
 from pathlib import Path
+
+# Narrative films (vlog, travel, documentary) keep the score running end to end; silence is only for
+# passages the author asked for, so an undeclared gap over 2 s is already a hole in the score.
+PRESETS = {"default": {"max_gap": 6.0}, "narrative": {"max_gap": 2.0}}
 
 
 def lang(text):
@@ -121,9 +130,17 @@ def pacing(film, beat_min=4.0, beat_run=3, hold_min=1.0):
     return out
 
 
+def lyric_release(override):
+    """(reason, author_quote) of a complete lyric_override, else None."""
+    if not isinstance(override, dict):
+        return None
+    reason, quote = (str(override.get(k, "")).strip() for k in ("reason", "author_quote"))
+    return (reason, quote) if reason and quote else None
+
+
 def validate(sheet, tracks, film, min_tracks=3, max_gap=6.0, card_run=3, card_max=5.0, silence_tail=2.0,
              beat_min=4.0, beat_run=3, hold_min=1.0):
-    errors, warnings, info = [], [], []
+    errors, warnings, info, released = [], [], [], []
     cues = sheet["cues"]
     playable, unplayable = tracks.get("playable", {}), tracks.get("unplayable", {})
     dur = film["duration"]
@@ -159,11 +176,30 @@ def validate(sheet, tracks, film, min_tracks=3, max_gap=6.0, card_run=3, card_ma
                 warnings.append(f"{cid}: exits mid-passage ({lv(end - 0.5)} dB at {end:.1f}s) "
                                 f"with fade_out {c.get('fade_out', 0)}s")
         spans = lyric_spans(c, tr)
-        same = sum(overlap(a, b, v0, v1) for a, b, lg in spans if lg == speech for v0, v1 in voice)
+        clash = sorted((max(a, v0), min(b, v1)) for a, b, lg in spans if lg == speech
+                       for v0, v1 in voice if overlap(a, b, v0, v1) > 0)
+        same = sum(b - a for a, b in clash)
         other = sum(overlap(a, b, v0, v1) for a, b, lg in spans if lg != speech for v0, v1 in voice)
         if same > 1.0:
-            errors.append(f"{cid}: {same:.1f}s of sung '{speech}' lyrics under '{speech}' dialogue "
-                          f"(track {c['track']}); move the cue or use an instrumental passage")
+            clearance = lyric_release(c.get("lyric_override"))
+            joined = []
+            for a, b in clash:
+                if joined and a <= joined[-1][1] + 0.05:
+                    joined[-1][1] = max(joined[-1][1], b)
+                else:
+                    joined.append([a, b])
+            where = ", ".join(f"{a:.1f}-{b:.1f}s" for a, b in joined)
+            if clearance:
+                released.append({"cue": cid, "track": c["track"], "seconds": round(same, 1),
+                                 "spans": [[round(a, 2), round(b, 2)] for a, b in joined],
+                                 "reason": clearance[0], "author_quote": clearance[1]})
+                info.append(f"{cid}: {same:.1f}s of sung '{speech}' lyrics under '{speech}' dialogue released "
+                            f"by the author ({where}): {clearance[0]}; author: \"{clearance[1]}\"")
+            else:
+                errors.append(f"{cid}: {same:.1f}s of sung '{speech}' lyrics under '{speech}' dialogue "
+                              f"(track {c['track']}); move the cue or use an instrumental passage"
+                              + ("; lyric_override needs both reason and author_quote"
+                                 if c.get("lyric_override") else ""))
         elif other > 0.5:
             warnings.append(f"{cid}: {other:.1f}s of singing/chant in another language under dialogue (track {c['track']})")
         if tr.get("instrumental") is None and not tr.get("sung_lines"):
@@ -245,7 +281,7 @@ def validate(sheet, tracks, film, min_tracks=3, max_gap=6.0, card_run=3, card_ma
     if len(used) < min_tracks:
         warnings.append(f"only {len(used)} distinct tracks; a narrative film normally mixes >= {min_tracks} "
                         f"(state why a single score carries the whole film)")
-    return {"errors": errors, "warnings": warnings, "info": info}
+    return {"errors": errors, "warnings": warnings, "info": info, "released": released}
 
 
 def main():
@@ -254,7 +290,10 @@ def main():
     ap.add_argument("--tracks", required=True, help="tracks.json from bgm_tracks.py")
     ap.add_argument("--film", required=True, help="film.json with duration, voice_spans and text_spans")
     ap.add_argument("--min-tracks", type=int, default=3, help="warn below this many distinct tracks (default 3)")
-    ap.add_argument("--max-gap", type=float, default=6.0, help="undeclared music-free span limit, s (default 6)")
+    ap.add_argument("--preset", choices=sorted(PRESETS), default="default",
+                    help="narrative: vlog/travel/documentary score that runs continuously (--max-gap 2)")
+    ap.add_argument("--max-gap", type=float,
+                    help="undeclared music-free span limit, s (default 6; 2 with --preset narrative)")
     ap.add_argument("--card-run", type=int, default=3, help="warn on this many short cards in a row (default 3)")
     ap.add_argument("--card-max", type=float, default=5.0, help="a text card this short counts, s (default 5)")
     ap.add_argument("--silence-tail", type=float, default=2.0, help="music allowed into a declared silence, s (default 2)")
@@ -264,7 +303,8 @@ def main():
     ap.add_argument("--json", dest="json_out", help="write the report as JSON")
     args = ap.parse_args()
     load = lambda p: json.loads(Path(p).read_text(encoding="utf-8"))  # noqa: E731
-    out = validate(load(args.cues), load(args.tracks), load(args.film), args.min_tracks, args.max_gap,
+    max_gap = args.max_gap if args.max_gap is not None else PRESETS[args.preset]["max_gap"]
+    out = validate(load(args.cues), load(args.tracks), load(args.film), args.min_tracks, max_gap,
                    args.card_run, args.card_max, args.silence_tail, args.beat_min, args.beat_run, args.hold_min)
     for key in ("errors", "warnings", "info"):
         for m in out[key]:

@@ -7,18 +7,21 @@ and music change, compares the counts with caps, and (with --baseline) refuses f
 
 Picture  layers (consecutive shots with the same shot/source key merged), ASL = duration / layers,
          shots under 3 s, clip switches per minute, capture-time jumps back of more than 30 min
+         (shots marked "flashback": true are a deliberate memory segment: they are left out of the
+         jump count, which resumes from the last present-day shot, and reported as "flashbacks")
 Words    text cards, chapters, a through-line of at most five sentences
 Music    cues, tracks, track changes (each time a different track takes over, the first entry
          included), median cue length, tracks per chapter, track changes away from a chapter or scene
-         boundary, cross-fades shorter than --min-change-xfade at a track change
+         boundary, cross-fades shorter than --min-change-xfade-s at a track change
 
 The default caps come from the Kailash v0.4 plan for a film of about 8 minutes, set after the author
 judged v0.3 too fragmented. They are provisional: over-cap values print as WARN and exit 0 unless
---strict is given.
+--strict is given. The track-change cross-fade floor is 1 s, the shortest handoff in the accepted
+Kailash final (1-3 s, median 1.5 s) and the cross-fade floor validate_cues.py already applies.
 
 film.json: {"duration", "shots": [{"t0", "t1", "source", "shot"?, "captured_at"?, "black"?,
-            "transition_in"?}], "text_spans"?, "chapters"?: [{"t"}], "scenes"?: [{"t0", "t1"}],
-            "throughline"?: ["sentence", ...]}
+            "transition_in"?, "flashback"?}], "text_spans"?, "chapters"?: [{"t"}],
+            "scenes"?: [{"t0", "t1"}], "throughline"?: ["sentence", ...]}
 captured_at is ISO 8601 or YYYYMMDD_HHMMSS. cues.json is the cue sheet validate_cues.py reads.
 """
 import argparse
@@ -34,6 +37,7 @@ CAPS = {
     "text_cards_max": 18, "chapters_max": 5, "tracks_max": 4, "cues_max": 9, "track_changes_max": 7,
     "median_cue_min_s": 40.0,
 }
+MIN_CHANGE_XFADE_S = 1.0
 RAISE_CHECK = [("picture", "layers"), ("picture", "shots_under_3s"), ("picture", "clip_switches"),
                ("picture", "time_jumps_back"), ("words", "text_cards"), ("music", "cues"),
                ("music", "tracks"), ("music", "track_changes")]
@@ -66,11 +70,12 @@ def picture(film):
         src = m.get("source")
         if src and src != prev_src:
             switches += 1
-            k = minutes(m.get("captured_at"))
+            k = None if m.get("flashback") else minutes(m.get("captured_at"))
             if prev_min is not None and k is not None and prev_min - k > 30:
                 back += 1
             prev_min = k if k is not None else prev_min
         prev_src = src or prev_src
+    flashbacks = sum(1 for a, b in zip([{}] + pics, pics) if b.get("flashback") and not a.get("flashback"))
     trans = {}
     for s in shots[1:]:
         t = s.get("transition_in", "cut")
@@ -79,7 +84,7 @@ def picture(film):
             "median_shot_s": round(statistics.median(lens), 2) if lens else 0,
             "shots_under_3s": sum(1 for x in lens if x < 3), "jump_cuts": jump_cuts,
             "clip_switches": switches, "clip_switches_per_min": round(switches / (dur / 60), 2),
-            "time_jumps_back": back, "transitions": trans}
+            "time_jumps_back": back, "flashbacks": flashbacks, "transitions": trans}
 
 
 def music(sheet, film, min_xfade):
@@ -111,7 +116,7 @@ def music(sheet, film, min_xfade):
             "changes_off_boundary": off_boundary, "short_change_xfades": short_xfade}
 
 
-def measure(film, sheet, min_xfade=3.0):
+def measure(film, sheet, min_xfade=MIN_CHANGE_XFADE_S):
     return {"duration_s": film["duration"], "picture": picture(film),
             "words": {"text_cards": len(film.get("text_spans", [])), "chapters": len(film.get("chapters", [])),
                       "throughline_sentences": len(film.get("throughline", []))},
@@ -166,7 +171,8 @@ def main():
     ap.add_argument("--strict", action="store_true", help="exit 1 on any over-cap value or raised count")
     for k, v in CAPS.items():
         ap.add_argument("--" + k.replace("_", "-"), type=type(v), default=v, help=f"provisional cap (default {v})")
-    ap.add_argument("--min-change-xfade-s", type=float, default=3.0, help="cross-fade at a track change, s (default 3)")
+    ap.add_argument("--min-change-xfade-s", type=float, default=MIN_CHANGE_XFADE_S,
+                    help=f"cross-fade at a track change, s (default {MIN_CHANGE_XFADE_S:g})")
     args = ap.parse_args()
     load = lambda p: json.loads(Path(p).read_text(encoding="utf-8"))  # noqa: E731
     caps = dict({k: getattr(args, k) for k in CAPS}, min_change_xfade_s=args.min_change_xfade_s)
@@ -175,7 +181,8 @@ def main():
     up = raised(m, load(args.baseline)) if args.baseline else []
     p, mu = m["picture"], m["music"]
     print(f"picture  layers {p['layers']}  ASL {p['asl_s']}s  <3s {p['shots_under_3s']}  switches "
-          f"{p['clip_switches']} ({p['clip_switches_per_min']}/min)  jumps back {p['time_jumps_back']}")
+          f"{p['clip_switches']} ({p['clip_switches_per_min']}/min)  jumps back {p['time_jumps_back']}  "
+          f"flashbacks {p['flashbacks']}")
     print(f"words    text cards {m['words']['text_cards']}  chapters {m['words']['chapters']}  "
           f"through-line {m['words']['throughline_sentences']} sentences")
     print(f"music    cues {mu['cues']}  tracks {mu['tracks']}  changes {mu['track_changes']}  median cue "

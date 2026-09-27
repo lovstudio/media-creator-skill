@@ -107,7 +107,7 @@ v0.4–v0.8 的审片又纠正了两件事：配乐不能为口播或“留白�
   在叙事片里的暂时静音）。静默只用于作者明确要求的段落，写进 `silences` 并注明作者原话；早期版本里 agent
   自设、作者从没要过的静音拍要重新审视。交付前扫一遍 `score_mix.py --stems` 输出的 `stem-music.wav`：
   连续 2 秒以上低于 −60 dBFS 就是断档，要补；有意用的极轻前奏或尾奏会被误判，在 cue 理由里注明后按例外
-  处理（`validate_cues.py --max-gap 2` 可先在 cue 表上查；脚本默认值仍是 6 秒）。观测实例：出门到餐车
+  处理（`validate_cues.py --preset narrative` 把未声明无乐段的上限设为 2 秒，可先在 cue 表上查）。观测实例：出门到餐车
   约 32 秒只留现场声、独白段和天葬台设为 silence、一首歌提前收，作者三次追问“为啥没有 BGM”“停得太快”；
   终版 11 条 cue 覆盖 100%，最长无乐 0.2 秒。
 - **高潮处作者自己唱歌、呐喊、喘息这类有表演性的声音是主角**，不能按环境噪声压低或静音：把它写进
@@ -121,8 +121,9 @@ v0.4–v0.8 的审片又纠正了两件事：配乐不能为口播或“留白�
   1 秒的重叠判为 ERROR（1 秒容差只用来吸收 LRC 行尾的估计误差）。默认办法是挪动 cue，或改用器乐段、
   前奏、间奏，不靠压低电平把歌词“藏”起来。
 - **有条件放行：只在作者明确点名该曲垫这段对白，或明确说不为口播停歌时。** 这时不停歌、不截成无词段、
-  不推迟入歌；在该 cue 的 `rationale` 里写放行理由与作者原话，并把每条冲突写进交付报告的放行清单（cue、
-  区间、作者原话）。`validate_cues.py` 目前没有 cue 级放行字段，这些冲突仍报 ERROR，由放行清单说明。
+  不推迟入歌；在该 cue 上写 `"lyric_override": {"reason": 放行理由, "author_quote": 作者原话}`。
+  `validate_cues.py` 把这条冲突降为 INFO，并在输出的 `released` 里列出 cue、合并后的冲突区间、秒数、理由与
+  原话，直接作为交付报告的放行清单；缺理由或原话仍判 ERROR。作者没有这样表态时不写这个字段。
   逐句调压低深度：SMR 过低就单句加深，SMR 过高（歌几乎听不见）就减浅。可懂度仍按下文「客观门禁」的
   全片配对均值判定；放行区间内的句子另按组求 CER 均值，与同一组句子的纯人声底线均值比较并写进放行清单，
   逐句差值只用来排抽听顺序（`largest_regressions`）。观测实例：茶馆两句 SMR 高达 39–50 dB、歌几乎听不见，
@@ -208,8 +209,8 @@ v0.4–v0.8 的审片又纠正了两件事：配乐不能为口播或“留白�
 - **单位是场景，不是节拍。**场景 = 一个地点 + 一段连续时间。剪之前先写出观众能复述的主线，
   不超过五句，放进 `film.json` 的 `throughline`。
 - **画面和配乐在同一张表里一起设计。**音乐的弧线决定场景长度；换曲只放在章节或场景边界。
-  交叉淡化 3 秒是 `cut_metrics.py` 的默认下限，不是定律：作者接受的终版交接叠化为 1–3 秒（中位 1.5 秒），
-  桥接叠入时用 `--min-change-xfade-s` 调低，并在 cue 理由里说明。
+  `cut_metrics.py` 的换曲交叉淡化默认下限是 1 秒，与 `validate_cues.py` 的交叉淡化下限一致：作者接受的终版
+  交接为 1–3 秒（中位 1.5 秒）。v0.4 计划里的 3 秒只作设计起点，要按它查时传 `--min-change-xfade-s 3`。
 - **agent 自发的修改只做减法。**审片和修复只能删、并、加长；要加东西就得替换掉别的，且碎片指标不能上升。
   `cut_metrics.py --baseline 上一版.json` 会逐项对比，任何一项上升都报出来。作者点名要补的素材、对话或曲目
   照做，用 `--baseline` 记录指标变化并在报告里写明来源，不拿上限拒绝。
@@ -223,7 +224,7 @@ v0.4–v0.8 的审片又纠正了两件事：配乐不能为口播或“留白�
 | --- | --- |
 | 画面 | ASL ≥ 9 s；短于 3 秒的镜头 ≤ 3；拍摄时间倒跳 ≤ 1（留给冷开场）；素材切换 ≤ 3.5 次/分钟 |
 | 文字 | 字卡 ≤ 18；章节 ≤ 5；主线 1–5 句 |
-| 配乐 | 曲目 ≤ 4；cue ≤ 9；换曲 ≤ 7（首曲进入也算一次）；cue 中位长度 ≥ 40 s；换曲只在章节或场景边界，交叉淡化默认 ≥ 3 s（见上） |
+| 配乐 | 曲目 ≤ 4；cue ≤ 9；换曲 ≤ 7（首曲进入也算一次）；cue 中位长度 ≥ 40 s；换曲只在章节或场景边界，交叉淡化 ≥ 1 s（见上） |
 
 ```bash
 python3 "$SKILL_DIR/scripts/cut_metrics.py" --film WORK_DIR/music/film.json --cues WORK_DIR/music/cues.json \
@@ -235,22 +236,29 @@ python3 "$SKILL_DIR/scripts/cut_metrics.py" --film WORK_DIR/music/film.json --cu
 | 文件 | 内容 |
 | --- | --- |
 | `tracks.json` | `bgm_tracks.py` 输出：每首的时长、逐秒响度与亮度、速度估计、安静窗/起势点/变化点、带语种标记的歌词行、`instrumental`（`true` / `false` / `null`），以及 `unplayable` |
-| `film.json` | `duration`、`dialogue_language`（默认 `zh`）、`voice_spans[{t0,t1}]`、`text_spans[{t0,t1,text}]`（屏幕字卡），可选 `beats[{t0,t1,transition_in?}]`、`chapters[{t}]`、`scenes[{t0,t1}]`、`throughline[句子]`、`shots[{t0,t1,source,shot?,captured_at?,black?,transition_in?}]`（`cut_metrics.py` 用） |
-| `cues.json` | `cues[{id, track, track_in, at, dur, level_db 或 gain_db, fade_in, fade_out, env?, rationale, lyric_feature?}]`、`silences[{t0,t1,reason}]`、`mix_intents[{t0,t1,intent,reason,duck_db?,band_cut_db?}]`，可选 `duck_db` / `band_cut_db`（clear 的深度） |
+| `film.json` | `duration`、`dialogue_language`（默认 `zh`）、`voice_spans[{t0,t1}]`、`text_spans[{t0,t1,text}]`（屏幕字卡），可选 `beats[{t0,t1,transition_in?}]`、`chapters[{t}]`、`scenes[{t0,t1}]`、`throughline[句子]`、`shots[{t0,t1,source,shot?,captured_at?,black?,transition_in?,flashback?}]`（`cut_metrics.py` 用；回忆段镜头标 `flashback: true`，不计入拍摄时间倒跳） |
+| `cues.json` | `cues[{id, track, track_in, at, dur, level_db 或 gain_db, level_ref?, fade_in, fade_out, env?, rationale, lyric_feature?, lyric_override?{reason, author_quote}}]`、`silences[{t0,t1,reason}]`、`mix_intents[{t0,t1,intent,reason,duck_db?,band_cut_db?}]`，可选 `duck_db` / `band_cut_db`（clear 的深度）与表头 `level_ref` |
 | `voice.json` | `duration`、`lines[{id, file, at, lufs?, source?, source_spans?, intent?}]`、可选 `ambient[{file, at, dur, ss?, level_db?, source?}]`；`source_spans` 是这句口播用到的源素材时段 `[[s0, s1], ...]`；相对路径按该文件所在目录解析 |
 
-`level_db = 0` 对应该 cue 有声部分 `-27 dBFS RMS` 的音乐床，不同曲目按同一基准对齐听感响度。
+`level_db = 0` 让电平基准的有声部分落在 `-27 dBFS RMS`（`--music-ref`），不同曲目按同一基准对齐听感响度。
+基准由 `level_ref` 决定：
 
-**坑：**这个基准按 cue 截取的片段本身测量。只用一首曲子的安静前奏或局部时，`score_mix.py` 会把它抬到和
-副歌一样响（观测实例：只用前 61 秒安静部分，被抬高约 8 dB，压在旁白下偏响）。这类 cue 改写 `gain_db`
-绝对增益，或给 `level_db` 额外减几 dB，并在理由里注明。
+- `"cue"`（默认，旧 cue 表不变）：cue 截取的片段本身。**坑：**只用一首曲子的安静前奏或局部时，会被抬到和
+  副歌一样响（观测实例：只用前 61 秒安静部分，被抬高约 8 dB，压在旁白下偏响；终版 `M2-day1` 用前 70 秒，
+  比整首基准高 6.8 dB）。
+- `"track"`：整首曲子，保留曲内动态，前奏仍比副歌轻。只用曲子局部的 cue 用它或参考窗口。
+- `[t0, t1]`：曲内一段参考窗口（曲目秒数），例如让这条 cue 按副歌的响度对齐。
+
+cue 上的值优先，其次是 `--level-ref cue|track`（`score_mix.py` 与 `smr_check.py` 通用），最后是表头的
+`level_ref`。`mix-report.json` 的每条 music 记录用了哪个基准（`level_ref`）和基准电平（`ref_rms_db`）。
+要完全手控时仍可写 `gain_db` 绝对增益，并在理由里注明。
 
 ### 客观门禁
 
 ```bash
 python3 "$SKILL_DIR/scripts/bgm_tracks.py" --library MUSIC_DIR \
   --output WORK_DIR/music/tracks.json --summary WORK_DIR/music/tracks.md
-python3 "$SKILL_DIR/scripts/validate_cues.py" --cues WORK_DIR/music/cues.json \
+python3 "$SKILL_DIR/scripts/validate_cues.py" --preset narrative --cues WORK_DIR/music/cues.json \
   --tracks WORK_DIR/music/tracks.json --film WORK_DIR/music/film.json --json WORK_DIR/music/cue-check.json
 python3 "$SKILL_DIR/scripts/smr_check.py" --voice WORK_DIR/audio/voice.json --cues WORK_DIR/music/cues.json \
   --tracks WORK_DIR/music/tracks.json --output WORK_DIR/music/smr.json
@@ -263,7 +271,7 @@ python3 "$SKILL_DIR/scripts/intelligibility.py" --mix WORK_DIR/audio/mix/final-m
 
 | 门禁 | 通过标准 | 不通过时 |
 | --- | --- | --- |
-| `validate_cues.py` | 0 ERROR（作者放行的同语种歌词冲突除外，见「歌词」）；每条 WARN 已修复，或在 cue 理由里写明原因 | 挪 cue、换段落、补理由或补 `silences` |
+| `validate_cues.py` | 0 ERROR（作者放行的同语种歌词冲突写 `lyric_override`，报 INFO 并列入 `released`，见「歌词」）；每条 WARN 已修复，或在 cue 理由里写明原因 | 挪 cue、换段落、补理由或补 `silences` |
 | `smr_check.py` | 500–3000 Hz 语音频段 SMR 按该句的混音意图判定：`clear` 中位数 ≥ 16 dB 且 p10 ≥ 8 dB；`blend` 中位数 ≥ 10 dB 且 p10 ≥ 4 dB；`feature` 只记录 | 调低该句下的 cue、加 `env`、换更稀疏的段落，或有意改选意图 |
 | `score_mix.py` | 母带 `-16 LUFS-I ±0.5`，True Peak ≤ `-3 dBTP` | 看 `mix-report.json` 的限幅量和重试记录 |
 | `intelligibility.py` | 全片平均 CER 比纯人声底线高出不超过 0.02 | 按 `largest_regressions` 逐句抽听，找出被遮住的句子 |
