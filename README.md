@@ -1,6 +1,6 @@
 # 天才剪辑师 · Video Studio
 
-![Version](https://img.shields.io/badge/version-0.19.0-CC785C)
+![Version](https://img.shields.io/badge/version-0.20.0-CC785C)
 
 把 MP4 或 `.screenstudio` 源工程整理成两阶段交付：先做 Remotion Studio 与字幕审校版本，再以批准字幕生成归档母版、平台文件和正式封面图片。源工程模式保留独立屏幕、摄像头、麦克风、系统声、鼠标和快捷键事件；跨平台任务先完成并质检视频号 9:16，再顺序派生 B 站 16:9。
 
@@ -29,6 +29,16 @@ npx skills add lovstudio/media-creator-skill -g -y
 export SKILL_SOURCE_DIR="$(pwd)"
 npx skills add "$SKILL_SOURCE_DIR"
 ```
+
+### 可选搭配：视频分发助手（免费）
+
+成片过了字幕、质检和封面三道门之后，可以交给 [`lov-media-publisher`](https://github.com/lovstudio/media-publisher-skill) 发视频号和 B 站：终稿确认、发布和列表回读都由它负责。它需要 ego-browser、已登录的创作者账号和 macOS 通知；只剪辑不需要安装。
+
+```bash
+npx skills add lovstudio/media-publisher-skill -g -y
+```
+
+用 `npx lovstudio skills add media-creator` 安装时，会在依赖预检里列出这一项；加 `--with-deps` 会一并安装。`npx skills add` 不读这项预检。没有安装发布能力时，本 Skill 停在 `platform-ready`，并在交付报告里给出上面的安装命令。
 
 ## 使用
 

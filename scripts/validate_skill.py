@@ -22,8 +22,11 @@ except ImportError:
 
 # `compatibility` 放顶层是这一组 Skill 的家族约定，维护工具从顶层读它做可移植性
 # 判定；只写在 metadata 下会被读成空字符串。
+# 顶层 `dependencies` 是 lovstudio CLI 的安装预检：`skills add` 后逐项执行 check，缺失只提示，
+# 加 --with-deps 才执行 install。这里用它提示可选搭配 Skill，不是 depends_on 那种强制安装。
 FRONTMATTER_KEYS = {
-    "name", "description", "license", "allowed-tools", "compatibility", "depends_on", "metadata",
+    "name", "description", "license", "allowed-tools", "compatibility", "depends_on",
+    "dependencies", "metadata",
 }
 TEXT_SUFFIXES = {".md", ".json", ".yaml", ".yml", ".txt", ".svg", ".py"}
 JUNK_NAMES = {"__pycache__", ".DS_Store"}
@@ -102,6 +105,20 @@ def validate_skill_file(path: Path, errors: list[str]) -> dict[str, Any] | None:
         isinstance(item, str) and NAME_RE.fullmatch(item) for item in depends_on
     ):
         errors.append(f"{path}: depends_on must be a list of kebab-case Skill names")
+
+    preflight = data.get("dependencies", [])
+    if not isinstance(preflight, list) or not all(
+        isinstance(item, dict)
+        and compact_text(item.get("name"))
+        and isinstance(item.get("check"), str) and item["check"].strip()
+        and isinstance(item.get("install"), str) and item["install"].strip()
+        and set(item) <= {"name", "check", "install"}
+        for item in preflight
+    ):
+        errors.append(
+            f"{path}: dependencies must be a list of {{name, check, install}} entries "
+            "(the lovstudio CLI install preflight)"
+        )
 
     name = compact_text(data.get("name"))
     if not NAME_RE.fullmatch(name) or len(name) > 64:

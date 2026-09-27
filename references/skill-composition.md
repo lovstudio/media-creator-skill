@@ -16,7 +16,7 @@
 | `lov-media-crawler` | 视频号 / B 站 / 小红书等平台链接 → 解析信息与下载后的本地媒体、诊断报告 | 上游可选能力；叙事片回忆段要用作者在平台上的旧视频时，先只解析元信息，作者同意后再由它下载并校验。 |
 | `lov-wdb-cli` | 本地微信数据的只读查询 → 朋友圈等记录与媒体线索 | 上游可选能力；作者同意取用本地社交缓存里的旧照片时，由它按帖子记录的宽高与时间范围匹配原图；本 Skill 只接收匹配出的文件。 |
 | `lov-voice2srt` | 录音或视频 → SRT、JSON 与纯文本，可带热词表，付费云端 ASR 前显示成本 | 可选转写能力；云端 ASR 是 Profile 选择，上传第三方与计费先向作者说明；本 Skill 仍负责剪点回转写与字幕校对。 |
-| `lov-media-publisher` | 字幕已批准的平台媒体 → 视频号 / B 站终稿确认、发布状态与列表回读 | 下游可选能力；只接收 `platform-ready` 文件和交付报告，最终发布状态由发布能力负责。 |
+| `lov-media-publisher` | 字幕已批准的平台媒体 → 视频号 / B 站终稿确认、发布状态与列表回读 | 下游可选能力（免费）；只接收字幕已批准、`platform-ready` 且封面已批准的文件和交付报告，最终发布状态由发布能力负责。宿主发现它才交接，未发现时停在 `platform-ready` 并给出安装命令；安装时由 frontmatter 的 `dependencies:` 预检提示，不写进 `depends_on`。 |
 
 ## Atomic Handoffs
 
@@ -27,7 +27,7 @@
 - 需要 Subtitle Edit 时，无旁白硬字幕画面 + 音频母带 + SRT → `subtitle_gate.py review` → 字幕修正 MKV + 回抽证据：本 Skill 拥有字幕修正门禁；该 MKV 不是主预览。
 - 审校 MKV + 用户批准 SRT → `subtitle_gate.py approve` → 归档 MKV：视频/音频 stream copy，不重复有损编码。
 - 平台文件 → `media_probe.py`、`audio_qc.py` 和 FFmpeg decode smoke test → `final-probe.json`、`audio-qc.json`：本 Skill 自己拥有渲染与音频验收。
-- `subtitle_status=approved` 且 `delivery_status=platform-ready` 的文件 + 交付报告 → `lov-media-publisher`：发布 Skill 拥有账号交互、终稿确认、发布和线上回读；本 Skill 只记录交接状态。发布页文字字段预填只在作者同意且进入发布交接后交给它，只填文字，不上传、不提交；已发布版本的下架、替换或重发同样归它，由作者决定（见 delivery-contract「发布前隐私扫描」）。
+- `subtitle_status=approved`、`delivery_status=platform-ready` 且 `cover_status=approved` 的文件 + 交付报告 → `lov-media-publisher`（宿主可发现且作者要求发布时；否则停在 `platform-ready`、不启动交接，`publish_status` 保持 `not-requested`，作者要求过发布时报告写明「未发现发布能力」并给出 `npx skills add lovstudio/media-publisher-skill -g -y`）：发布 Skill 拥有账号交互、终稿确认、发布和线上回读；本 Skill 只记录交接状态。发布页文字字段预填只在作者同意且进入发布交接后交给它，只填文字，不上传、不提交；已发布版本的下架、替换或重发同样归它，由作者决定（见 delivery-contract「发布前隐私扫描」）。
 - 作者在平台上发布过的旧视频链接 → `lov-media-crawler` / `lov-media-fetch`（先只解析标题、时长，作者同意后下载并校验）→ 本地可读文件：获取归上游，本 Skill 负责取舍、模糊底、静音与时间水印。
 - 本地社交缓存里的旧照片 → `lov-wdb-cli`（按帖子记录的宽高与时间范围匹配原图，临时文件用完即删）→ 原图文件：读取归上游，逐张审片、裁切与隐私处理归本 Skill。
 - 作者原声 + 题材热词表 → `lov-voice2srt`（云端 ASR 由 Profile 选择，上传与计费先向作者说明）→ SRT / JSON：转写归上游，剪点定位、逐句回转写和字幕校对归本 Skill。
@@ -46,8 +46,10 @@
 - 与 `lov-media-fetch`、`lov-media-crawler`、`lov-wdb-cli` 的边界在“素材已可读”；平台下载、社交缓存解析和
   媒体获取失败都交回上游，不在此 Skill 内加入下载器或缓存解析器。
 - 与 `lov-voice2srt` 的边界在“有带时间戳的转写”；本 Skill 不内置云端 ASR 客户端，只决定用哪份转写、怎么校对。
-- 与 `lov-media-publisher` 的边界在“字幕已批准，平台文件已通过质检”；审校 MKV 不得发布，发布失败或回读缺失也不得倒写成片状态。
+- 与 `lov-media-publisher` 的边界在“字幕已批准、平台文件已通过质检、封面已批准”；审校 MKV 不得发布，发布失败或回读缺失也不得倒写成片状态。
 
 ## Composition Decision
 
 选择 **Single Skill**。用户可见的结果是一个经过编辑、混音和质检的成片，扫描、剪辑规划、渲染、音频检查和交付报告共享同一份项目上下文；它们拆成独立 Skill 只会增加交接成本。相邻 Skill 通过明确的文件与状态交接保持可选，不作为源目录外的硬依赖。
+
+发布能力的安装方式单独说明。目录 `skills.yaml` 的 `depends_on` 会被 lovstudio CLI 纳入安装闭包，写进去就等于强制安装，会让只剪辑的用户也背上 ego-browser、平台登录态和 macOS 通知这些前提；把 `lov-media-publisher` 作为 Kit 模块内嵌，又会多出一份需要手工同步的源码。所以目录和 SKILL.md 的 `depends_on` 都不写它，只用 frontmatter 的 `dependencies:` 做安装预检：`npx lovstudio skills add media-creator` 会列出这项可选搭配，加 `--with-deps` 才安装；`npx skills add` 路径不读这一项，靠 README 与运行时提示补足。

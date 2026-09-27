@@ -34,6 +34,7 @@ Global, in a local Agent Skills environment on macOS, Linux or Windows.
 - FFmpeg and FFprobe for inspection, rendering, frame extraction and audio QC.
 - Node.js and Remotion for Screen Studio source projects, Studio previews and motion packaging.
 - Optional Pillow, Playwright or an image tool when a new cover asset is requested.
+- Optional: the free `lov-media-publisher` for WeChat Channels / Bilibili publishing needs ego-browser, logged-in creator accounts and macOS notifications; editing alone needs none of them.
 - User-provided media and an isolated output directory.
 
 ## Known Risks and Mitigations
@@ -72,7 +73,7 @@ The primary preview is Remotion Studio with the current authoritative edit state
 
 ## Skill Version
 
-0.19.0
+0.20.0
 
 ## Ethical Considerations
 

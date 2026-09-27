@@ -11,21 +11,16 @@ compatibility: >
   视频号封面优先交给可用的 `lov-channels-cover`；缺失时必须回退，开场静帧仍默认关闭。
 depends_on:
   - lov-branding-consistency
+dependencies:
+  - name: "lov-media-publisher（可选：发视频号 / B 站；需 ego-browser 与已登录的创作者账号，只剪辑不需要）"
+    check: 'test -f "$HOME/.agents/skills/lov-media-publisher/SKILL.md"'
+    install: "npx -y lovstudio@latest skills add media-publisher -y"
 metadata:
   author: contributors
-  version: "0.19.0"
+  version: "0.20.0"
   card_standard: lovstudio/skill-card/v1
-  tags:
-    - media-production
-    - video-editing
-    - ffmpeg
-    - audio-mix
-    - delivery-qc
-    - cover-assets
-    - opening-still
-    - screen-studio
-    - remotion
-  compatibility: "Python 3.8+, FFmpeg/FFprobe, numpy for narrative BGM gates, optional Whisper, Pillow or an image tool for cover assets."
+  tags: [media-production, video-editing, ffmpeg, audio-mix, delivery-qc, cover-assets, opening-still, screen-studio, remotion]
+  compatibility: "Python 3.8+, FFmpeg/FFprobe, numpy for narrative BGM gates, optional Whisper, Pillow or an image tool for cover assets; optional lov-media-publisher hand-off needs ego-browser and logged-in creator accounts, editing needs neither."
 ---
 
 # 天才剪辑师 · Video Studio
@@ -136,7 +131,7 @@ B 站 16:9、1920×1080 横版（见 [`references/platform-variants.md`](referen
 - 视频号封面：发现 `lov-channels-cover` 时优先交接；未发现则用当前图像能力、`lov-image-creator` 或项目 Remotion `Cover` composition 生成实际槽位图片，不得跳过。
 - 通用配图或其他平台封面：交给 `lov-image-creator` 或当前图像能力，输入为封面方向 JSON 或文字 brief，输出为 PNG/可编辑 HTML。
 - 视频来源获取：交给 `lov-media-fetch` / `lov-media-crawler`（平台旧视频先只解析元信息，作者同意再下载），本地社交缓存原图交给 `lov-wdb-cli`，输出为经过核验的本地素材；云端转写可交 `lov-voice2srt`，上传与计费先向作者说明。
-- 视频号 / B 站发布：交给 `lov-media-publisher`，输入为字幕已批准且已质检的平台成片，输出为终稿确认、发布状态与列表回读证据。
+- 视频号 / B 站发布：发现 `lov-media-publisher` 且作者要求发布时交接，输入为 `subtitle_status=approved`、`delivery_status=platform-ready`、`cover_status=approved` 的平台成片与交付报告，输出为终稿确认、发布状态与列表回读证据；未发现则停在 `platform-ready`、不启动交接（`publish_status` 保持 `not-requested`），作者要求过发布时在报告里写明「未发现发布能力」并给出安装命令 `npx skills add lovstudio/media-publisher-skill -g -y`（或 `npx lovstudio skills add media-publisher`）。
 本 Skill 负责最终成片的编辑判断、音频完整性和交付门禁；可选下游不得替代这些验收。
 
 #### 开场静帧：默认跳过，仅在用户主动要求时启用
@@ -496,4 +491,4 @@ for s in bgm_tracks validate_cues smr_check score_mix intelligibility cut_metric
 - Python 3.8+ 标准库；`PyYAML` 用于 Skill 结构验证；叙事片配乐门禁与混音需要 `numpy`，可懂度门禁另需 `mlx-whisper` 或 `openai-whisper`，优先用已有的持久 venv 运行（见 audio-mix「运行环境」）。
 - FFmpeg 与 FFprobe 用于视频解码、转码、帧提取和音频质检。
 - 可选 Pillow、Playwright 或图像生成能力，用于新封面资产；已有封面时不强制安装。
-- Screen Studio 源工程工作流需要 Node.js 与 Remotion；Remotion 只读取工作区代理轨，不修改源工程包。可选的字幕、章节和媒体发布 Skill 只通过交付文件交接，不是本 Skill 的安装依赖。
+- Screen Studio 源工程工作流需要 Node.js 与 Remotion；Remotion 只读取工作区代理轨，不修改源工程包。可选的字幕、章节和媒体发布 Skill 只通过交付文件交接，不是本 Skill 的安装依赖；`npx lovstudio skills add media-creator` 会用 frontmatter 的 `dependencies:` 提示可选的 `lov-media-publisher`，加 `--with-deps` 才安装，`npx skills add` 路径不读此项。

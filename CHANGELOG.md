@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.20.0] - 2026-09-28
+
+### Added
+
+- SKILL.md frontmatter 新增顶层 `dependencies:`，把免费的 `lov-media-publisher` 声明为 lovstudio CLI 的安装预检项：`npx lovstudio skills add media-creator` 会列出这项可选搭配，加 `--with-deps` 才安装。`depends_on` 仍只有 `lov-branding-consistency`，不强制安装发布能力，也不把它内嵌为 Kit 模块。
+- validate_skill.py 放行并校验顶层 `dependencies`（每项必须是 {name, check, install}），新增 tests/test_validate_skill.py 的 5 个测试。生态侧同步放行：skill-publisher-skill 0.7.7（lov-skill-publish 第 1 步的 source 校验）与 skill-creator-skill 4.6.5，否则 0.20.0 无法走正式发布流程。
+- README 新增「可选搭配：视频分发助手（免费）」，写明它需要 ego-browser、已登录的创作者账号和 macOS 通知，以及两条安装路径的差别；skill-card.yaml 与 skill-card.md 的依赖清单同步加上这一项。
+
+### Changed
+
+- Step 1.5 的发布交接改为：宿主能发现 `lov-media-publisher` 且作者要求发布时才交接，交接门禁与 delivery-contract「Handoff boundary」一致（字幕已批准、`platform-ready`、封面已批准）；发现不了就停在 `platform-ready`、不启动交接（`publish_status` 保持 `not-requested`），作者要求过发布时在报告里写明「未发现发布能力」并给出能用的安装命令 `npx skills add lovstudio/media-publisher-skill -g -y`。
+- skill-composition.md 的相邻能力表、Atomic Handoffs、Overlap Decisions 与 Composition Decision 同步上述边界（三处门禁都含封面已批准），并记录不用 `depends_on`、不做 Kit 内嵌的原因：强制安装的是目录 `skills.yaml` 的 `depends_on`。
+- 可选发布的环境说明放在 metadata.compatibility，顶层 `compatibility` 保持 406 字符（规范上限 500）。frontmatter 的 metadata.tags 改为单行列表，内容不变；SKILL.md 为 494 行。
+
+### Verification
+
+- 本 Skill、skill-publisher（`--target source`）与 skill-creator 三个校验器都通过；同一份 SKILL.md 把预检项改成缺 install、带未知键时，三者都报同一条错误。原有测试与新增 5 个测试共 67 个全部通过。
+- 用 lovstudio CLI 依赖的 yaml ^2.8.3 按 `readSkillFrontmatter` 的方式解析新 frontmatter：识别为 1 项预检；check 在本机（已装发布能力）返回满足，在空 HOME 下返回缺失，会打印安装提示。
+- lint_skill.py 0 错误 0 警告；新增一条 info LOCAL_AGENTS_PATH，来自预检的 check 路径 `$HOME/.agents/skills/…`，与 CLI 的 `globalSkillDir()` 一致，属预期。
+- 目录仓库 lovstudio/skills：media-creator 与 media-publisher 加双向 `related`，validate_deps.py 通过，重新渲染的 README 只变这两行。
+
 ## [0.19.0] - 2026-09-27
 
 ### Added
