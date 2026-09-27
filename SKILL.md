@@ -1,7 +1,7 @@
 ---
 name: lov-media-creator
 description: >
-  把整场课程/多人交流实录剪成独立切片，或把 MP4、Screen Studio 源工程剪成 Remotion 成片；完成精剪、字幕、连续混音、动画、横竖版与封面。
+  把整场课程/多人交流实录剪成独立切片，或把 MP4、Screen Studio 源工程、旅行 Vlog 与全景素材剪成 Remotion 成片；完成精剪、字幕、连续混音、动画、横竖版与封面。
   Use when editing recordings or .screenstudio projects into review or publish-ready videos.
 license: MIT
 compatibility: >
@@ -13,7 +13,7 @@ depends_on:
   - lov-branding-consistency
 metadata:
   author: contributors
-  version: "0.17.0"
+  version: "0.18.0"
   card_standard: lovstudio/skill-card/v1
   tags:
     - media-production
@@ -38,7 +38,7 @@ metadata:
 
 - 用户说“从整场实录选出全部有传播价值的独立切片，剪得流畅并精包装”，包括未完整录下的分享与多人交流。
 - 用户说“把这段录屏剪成视频号成片，保留最后有声音的成果段”。
-- 用户说“压缩上传卡顿、加 BGM、做 16:9 封面，并给我质检报告”，或嫌 Vlog “bgm 太单一，按叙事混合多首配乐”。
+- 用户说“压缩上传卡顿、加 BGM、做 16:9 封面，并给我质检报告”，或嫌 Vlog “bgm 太单一，按叙事混合多首配乐”，或“把全景相机和手机拍的旅行素材剪成 vlog，先发视频号竖版再出 B 站横版”。
 - 用户希望把长录屏整理成有开场、问题、操作证据和最终结果的短视频。
 - 用户提供 `.screenstudio` 源工程，希望重新控制摄像头位置、鼠标/快捷键、背景、音乐和画面包装。
 - 用户要求结合 Remotion 做动画、转场、可视化解释、专业字幕、横竖版和封面。
@@ -73,7 +73,7 @@ metadata:
 - 使用环境中的 `SKILL_DIR`；没有时从当前 Skill 上下文推断安装目录。
 - 先验证 `$SKILL_DIR/scripts/media_probe.py`、`timeline_check.py`、`audio_qc.py`、`check_opening_still.py`、`subtitle_gate.py`、`profile_store.py` 与 `iteration_plan.py` 是否存在；叙事片多曲配乐另验证 `bgm_tracks.py`、`validate_cues.py`、`smr_check.py`、`score_mix.py`、`intelligibility.py`、`cut_metrics.py`。
 - 再验证 media workflow、edit manifest、audio mix、cover/title、delivery contract 与 [`references/iteration-performance.md`](references/iteration-performance.md)；Screen Studio / Remotion 项目还要读取 [`references/screen-studio-remotion-qc.md`](references/screen-studio-remotion-qc.md)。
-- 持续栏目或已有多期素材时，另外验证并读取 `$SKILL_DIR/references/project-workspace.md`。
+- 持续栏目或已有多期素材时，另外验证并读取 `$SKILL_DIR/references/project-workspace.md`；Vlog / 旅行 / 纪录等叙事片读 [`references/narrative-vlog.md`](references/narrative-vlog.md)，素材多、跨设备、跨多天的长片另读 [`references/review-page.md`](references/review-page.md)；含 360 素材读 [`references/360-reframe.md`](references/360-reframe.md)，派生第二个平台画幅读 [`references/platform-variants.md`](references/platform-variants.md)，Remotion / FFmpeg / ASR 管线踩坑见 [`references/remotion-pipeline-pitfalls.md`](references/remotion-pipeline-pitfalls.md)。
 - 视频检查或渲染需要 `ffprobe` 与 `ffmpeg`。发布或 `platform-ready` 且没有已批准封面时，新图是必需项：立即启动封面分支。
 - 永远不覆盖源视频、源音频或原字幕；输出先落到独立的 `deliverables` 或用户指定目录。
 - `.screenstudio` 是只读源工程包：不得原地改写 `project.json`、`recording/*.m4s`、transcript 或事件文件。
@@ -101,10 +101,10 @@ export SKILL_DIR="/path/to/lov-media-creator"
 目标包含发布或 `platform-ready` 时默认 `cover_required=true`；复用匹配当前平台且已批准的封面，否则在标题钩子与素材稳定后并行生成。仅预览任务可暂缓；只有用户明确不要才记 `waived-by-user`。这与 `opening_still=false` 相互独立。
 
 跨平台任务默认以视频号为首个 production target：先制作、渲染并完整质检 9:16、1080×1920、
-30fps、H.264、AAC 48kHz 竖版；该文件达到 `platform-ready` 后，再从同一锁定时间轴派生并质检
-B 站 16:9、1920×1080 横版。两个全片渲染默认顺序执行，不并行争抢合成器、内存与媒体解码带宽；
-只有当前机器的短窗 benchmark 证明并行能缩短总墙钟时才可并行。明确请求或 Profile 有其他设置时，
-以当前请求为准。
+30fps、H.264、AAC 48kHz 竖版，首发前按 [`references/delivery-contract.md`](references/delivery-contract.md)「发布前隐私扫描」扫完编码成片（检测器逐帧、人工联系表 ≥ 5 fps）；
+达到 `platform-ready` 后先核对交付约定，把“按约定派生”与“复用现有版本”连同工时交作者选，再从同一锁定时间轴派生并质检
+B 站 16:9、1920×1080 横版（见 [`references/platform-variants.md`](references/platform-variants.md)）。两个全片渲染默认顺序执行，只有短窗 benchmark 证明并行能缩短总墙钟时才并行。
+已发布版本发现瑕疵时按 delivery-contract 同节告知作者、给选项。明确请求或 Profile 有其他设置时，以当前请求为准。
 
 #### Screen Studio 源工程是一等输入
 
@@ -135,7 +135,7 @@ B 站 16:9、1920×1080 横版。两个全片渲染默认顺序执行，不并�
 - 学习字幕：交给 `lov-subtitle-freedom-skill`，输入为成片或原字幕，输出为保持原时间轴的 SRT/ASS。
 - 视频号封面：发现 `lov-channels-cover` 时优先交接；未发现则用当前图像能力、`lov-image-creator` 或项目 Remotion `Cover` composition 生成实际槽位图片，不得跳过。
 - 通用配图或其他平台封面：交给 `lov-image-creator` 或当前图像能力，输入为封面方向 JSON 或文字 brief，输出为 PNG/可编辑 HTML。
-- 视频来源获取：交给 `lov-media-fetch`，输入为检索需求，输出为经过核验的本地素材。
+- 视频来源获取：交给 `lov-media-fetch` / `lov-media-crawler`（平台旧视频先只解析元信息，作者同意再下载），本地社交缓存原图交给 `lov-wdb-cli`，输出为经过核验的本地素材；云端转写可交 `lov-voice2srt`，上传与计费先向作者说明。
 - 视频号 / B 站发布：交给 `lov-media-publisher`，输入为字幕已批准且已质检的平台成片，输出为终稿确认、发布状态与列表回读证据。
 本 Skill 负责最终成片的编辑判断、音频完整性和交付门禁；可选下游不得替代这些验收。
 
@@ -215,7 +215,7 @@ python3 "$SKILL_DIR/scripts/timeline_check.py" \
 
 - 主角是工作流解决的实际问题，以及“终于跑通”的证据；工具名称只在确实帮助理解时出现。
 - 保留信息差和悬念，但不虚构速度、权限、成功率或发布状态；“一键”“秒发”“完全自动”只有在有对应证据时才能使用。
-- 用户给出封面主标题时原样尊重；封面只保留这个钩子与系列标识，不再补解释型副标题或泄底说明。
+- 用户给出封面主标题时原样尊重；封面只保留这个钩子与系列标识，不再补解释型副标题或泄底说明。片名优先级：用户逐字给定的片名 > 改编来源（已发表文章）的标题 > brief 主题句（「主题《…》」默认是创作方向，首次交付列为待确认）；改编作品封面先用作者已公开选用的图，征求意见时直接发 2–3 张图并排，见 [`references/cover-and-title.md`](references/cover-and-title.md)「改编作品与叙事片封面」。
 - 封面需要人物时优先复用用户指定或 Profile/品牌资产中已确认的职业照；录屏摄像头抽帧只作回退，
   且必须避开表情整理、半闭眼和口型中的帧。屏幕截图是可选辅助层，不为信息量强行加入。
 - 系列标识遵循版式模板并进入手机安全区，活跃度低于主标题；满宽底条可轻斜，但栏目文字保持
@@ -253,11 +253,11 @@ prompt、方向稿或生成脚本时，`creative_status` 仍是 `blocked-on-cove
 
 1. 先按 EDL 做粗剪，再做一次连贯性检查；转场、加速和裁切都要服务信息密度。
 2. 上传弹窗只保留必要的进入、选择和完成信号；卡顿段短暂呈现即可，不让等待成为视频主体。
-3. BGM 是氛围层，不是主角。有人声、点击反馈或最终视频播放时，降低 BGM；成果段需要听清原声时可暂时只保留原声。
+3. BGM 是氛围层，不是主角。有人声、点击反馈或最终视频播放时，降低 BGM；成果段需要听清原声时可暂时只保留原声（叙事片按 6a 保持配乐连续）。
 4. BGM 采用淡入淡出和 ducking，避免循环接缝、突兀起音与尾部截断。具体滤镜和参数见 [`references/audio-mix.md`](references/audio-mix.md)。
 5. 若源素材本身没有可用原声，标记这一事实，不用 BGM 冒充真实反馈。
 6. **系列片默认使用已约定的 `Screen Studio Lo-fi / Bright Lounge`**：从已授权素材构建连续音乐床，不再运行或复用前作的程序合成器、`make_music.py` 或同类生成脚本；素材缺失时阻塞并报告，不得回退到程序合成或临时替代曲。
-6a. **Vlog、旅行、纪录、宣传等叙事片不套系列默认**：用户给的曲库整体可用，不按其顺口点名的几首收窄，只以成片效果取舍；按章节与情绪混合多首，每条 cue 写明叙事理由，同语种歌词不压对白，字卡下默认避开歌词，留白要声明；人声与音乐不必互斥，按时刻选 clear / blend / feature，段落过渡留足气口；以场景为单位、少换曲、修改只做减法，用 `cut_metrics.py` 量碎片化。
+6a. **Vlog、旅行、纪录、宣传等叙事片不套系列默认**：用户给的曲库整体可用，不按其顺口点名的几首收窄；作者点名的曲目先按其建议位置试，按章节与当时的真实心境混合多首，每条 cue 写明叙事理由。配乐默认从头连到尾、一首放到下一首接手，口播只压低不停歌（叙事片不适用上文第 3 条与 audio-mix「基本策略」的暂时静音），静默只给作者要求的段落，交付前扫音乐 stem 上 2 秒以上的断档；同语种歌词默认不压对白，只有作者明确点名该曲垫对白或明确说不为口播停歌时有条件放行，cue 上记理由与作者原话，放行句按组求 CER 均值对比纯人声底线、逐句只排抽听顺序；字卡下默认避开歌词；人声与音乐不必互斥，按时刻选 clear / blend / feature，段落过渡留足气口；以场景为单位、少换曲，agent 自发的修改只做减法，用 `cut_metrics.py` 量碎片化。字卡、照片、口播剪点与人物口径见 [`references/narrative-vlog.md`](references/narrative-vlog.md)。
    `validate_cues.py`、`smr_check.py`、`intelligibility.py` 三道防听不清的客观门禁（数值是校准参考）与 `score_mix.py` 线性母带（`-3 dBTP`）见 [`references/audio-mix.md`](references/audio-mix.md) 的「叙事片多曲配乐」。
 6b. **片中念到的重点产品要做 research 再贴回画面，自研产品优先**（检索 → 官网 → 提炼当前定位
    → 截 hero/品牌资产 → 画中画停 4.5–5.5 秒）。流程、位置怎么量、以及 `$ego-browser` 的坑见
@@ -292,7 +292,7 @@ Remotion 同时负责按开场策略启用的动画标题、章节进度条、�
 `draft` 先启动或复用 Studio，以代理、当前 EDL/字幕/布局和预览混音快速审片；只跑本轮受影响的
 局部 canary，不等待最终连续母版、最终混音、全片 ASR 或全轨完整解码。`locked` 后才切换到连续母版
 与最终混音，执行完整解码、全片 ASR、关键帧和响度检查。`approved` 后才渲染平台文件并做全量 QC。
-Remotion Studio 始终是画面、节奏、声音和字幕的主预览；MKV 只用于 Subtitle Edit 字幕交接。
+Remotion Studio 始终是画面、节奏、声音和字幕的主预览；MKV 只用于 Subtitle Edit 字幕交接。作者在线审片时由主 agent 直接改剪辑表、只重渲变动镜头并推进 Studio，不默认启动多 agent 各出一版再评审的长工作流、不每轮渲染预览；交链接前确认服务在跑且加载的是本轮数据（见 [`references/iteration-performance.md`](references/iteration-performance.md)「作者在线快速迭代」）。
 完整矩阵见 [`references/screen-studio-remotion-qc.md`](references/screen-studio-remotion-qc.md)。
 
 **Studio 通过不等于最终编码画面通过。** `OffthreadVideo` 预览可为 `<video>`、终版为 `<img>`；样式应落
@@ -377,8 +377,8 @@ python3 "$SKILL_DIR/scripts/subtitle_gate.py" approve \
 
 平台容器每次以当前上传界面为准。默认策略：
 
-- B 站即使允许 MKV，也优先交 H.264/AAC MP4，并把批准 SRT 作为平台 CC 字幕上传；如果用户要求字幕始终可见，则从无字幕画面母版烧录一次。
-- 微信视频号优先交 H.264/AAC MP4；平台没有明确承诺保留 MKV 内嵌字幕轨时，使用批准 SRT 烧录的 MP4。
+- B 站即使允许 MKV，也优先交 H.264/AAC MP4：直接交渲染出的原码率 H.264/AAC MP4，不为码率二次压制；并把批准 SRT 作为平台 CC 字幕上传；如果用户要求字幕始终可见，则从无字幕画面母版烧录一次。
+- 微信视频号优先交 H.264/AAC MP4；平台没有明确承诺保留 MKV 内嵌字幕轨时，使用批准 SRT 烧录的 MP4；视频码率按平台建议 ≤ 10 Mbps 一次出（CRF + maxrate 约 9M + `+faststart`，见 platform-variants），不等上传预检再重压。
 - 只需要换容器且视频/音频已是 H.264/AAC 时使用 `-c copy -movflags +faststart`，不要把 MKV 再转码一次；只有烧字幕才重编码视频。
 
 平台“接受 MKV”不等于“保留 MKV 里的字幕轨”。报告必须分别记录容器支持证据、字幕交付方式

@@ -1,6 +1,6 @@
 schema: skill-manifest/v1
 id: lov-media-creator
-version: "0.17.0"
+version: "0.18.0"
 runtime: skill-runtime/v1
 context:
   profile:
@@ -70,6 +70,9 @@ context:
       - path: skills.lov-media-creator.records.bgm_multi_track
         required: false
         question: Vlog 等叙事片是否从你给的整个曲库按叙事混合多首 BGM，只以成片效果取舍？
+      - path: skills.lov-media-creator.records.people_privacy_scope
+        required: false
+        question: 旅行、纪录类片子里，旁人或路人只处理能认出的正脸，还是背影、衣物、远处人影也要避开？
   interaction:
     ask_missing: true
     max_questions: 1

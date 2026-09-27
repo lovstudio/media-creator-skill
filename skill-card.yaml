@@ -1,5 +1,5 @@
 schema: lovstudio/skill-card/v1
-version: "0.17.0"
+version: "0.18.0"
 description: "将整场课程和多人交流精剪为独立切片，或将 MP4、Screen Studio 工程整理为 Remotion 成片，完成字幕审校、连续混音、统一包装和实际文件验收。"
 owner:
   team: "Media Creator Maintainers"
@@ -9,13 +9,14 @@ license:
   terms: "允许使用、修改和分发；保留版权与许可声明。"
   url: "LICENSE"
 use_case:
-  audience: "需要把真实操作过程整理为短视频的创作者、产品团队和工作流记录者"
-  scenario: "从长录屏或演示素材中提炼问题、操作证据和最终结果，交付一份可回看的成片。"
+  audience: "需要把真实操作过程整理为短视频的创作者、产品团队和工作流记录者；也包括用全景相机、手机等多设备素材做旅行与纪录类叙事片、并要发多个平台版本的作者"
+  scenario: "从长录屏或演示素材中提炼问题、操作证据和最终结果，交付一份可回看的成片；或把旅行、纪录类多设备素材（含 360 全景）剪成叙事片，先交首发平台版本，再从同一时间线派生其他平台画幅。"
   tasks:
     - "扫描视频、音频和字幕流并建立媒体清单"
     - "按真实信息节点设计剪辑结构，并为每个平台槽位生成正式封面图片"
     - "混合原声与 BGM，并完成响度、峰值和解码质检"
     - "以 Remotion Studio 为主预览；需要字幕修正时封装 Subtitle Edit MKV，并以批准 SRT 生成平台文件"
+    - "叙事片按设备盘点素材、重投影 360 镜头、连续配乐，并在首发前做隐私扫描、从同一时间线派生第二个平台画幅"
 deployment:
   geography: global
   environments:
@@ -38,9 +39,9 @@ risks:
   - risk: "把未验证的速度、成功率或线上状态写进标题和报告。"
     mitigation: "将渲染、上传、发布和回读分开记录，只引用可回读证据。"
   - risk: "BGM 盖住人声、点击反馈或最终播放声音。"
-    mitigation: "录屏与知识系列固定使用已授权的 Screen Studio Lo-fi / Bright Lounge；程序合成 BGM 已废弃。叙事片从用户整库选曲并混合多首，每条 cue 写理由，同语种歌词不压对白，按时刻选择 clear / blend / feature 混音意图，并以 cue 校验、按意图分档的语音频段 SMR 与 Whisper CER 底线对比防止听不清。锁定画面与口播后完成 ducking 与线性母带；Studio 主预览只挂载与批准母版同源的一条最终混音。"
+    mitigation: "录屏与知识系列固定使用已授权的 Screen Studio Lo-fi / Bright Lounge；程序合成 BGM 已废弃。叙事片从用户整库选曲并混合多首，每条 cue 写理由，配乐默认连续、口播只压低不停歌；同语种歌词默认不压对白，只在作者明确点名该曲垫对白或明确说不为口播停歌时有条件放行，cue 上记理由与作者原话，放行句按组求 CER 均值对比纯人声底线；按时刻选择 clear / blend / feature 混音意图，并以 cue 校验、按意图分档的语音频段 SMR 与 Whisper CER 底线对比防止听不清。锁定画面与口播后完成 ducking 与线性母带；Studio 主预览只挂载与批准母版同源的一条最终混音。"
   - risk: "多轮修改只加东西，画面与配乐切来切去，每处都过局部门禁，整片却碎成马赛克、失去叙事感。"
-    mitigation: "以场景为单位并写出五句以内的主线；画面与配乐同表设计，换曲只在章节或场景边界；修改只做减法，用 cut_metrics.py 测量 ASL、短镜头、素材切换、时间倒跳、cue 与换曲次数，并与上一版对比。"
+    mitigation: "以场景为单位并写出五句以内的主线；画面与配乐同表设计，换曲只在章节或场景边界；agent 自发的修改只做减法，作者点名的补充照做并用基线记录指标变化，用 cut_metrics.py 测量 ASL、短镜头、素材切换、时间倒跳、cue 与换曲次数，并与上一版对比。"
   - risk: "对 AAC/M4S 逐片段粗定位，或为每个片段重建媒体元素，造成口水词残留、完整词被切坏和播放卡顿。"
     mitigation: "麦克风先解码为 PCM 再样本级剪辑；各 channel 生成一条连续代理轨，Remotion 只改变布局与包装。"
   - risk: "字幕、布局、BGM 或封面微调仍重建五轨和整片，导致一轮反馈等待一到两小时。"
@@ -57,6 +58,10 @@ risks:
     mitigation: "媒体样式覆盖稳定 wrapper 或同时覆盖 video/img；终版从编码文件抽取全部摄像头布局联系表并目视验收。"
   - risk: "只有封面 brief 或生成日志，却把发布交付误报为完成。"
     mitigation: "每个平台槽位都要求真实 PNG/JPEG，并逐张检查尺寸、安全区、四边条带和实际画面；只有用户批准后才能通过 creative gate。"
+  - risk: "首发版本只抽关键帧就交付，漏掉短暂闪过的二维码、车牌、证件号或不该出镜的人，发布后才在派生版本复核时发现。"
+    mitigation: "首个平台发布前在最终编码文件上做隐私扫描：检测器逐帧、人工联系表不低于 5 fps，范围含叠化尾巴，以实际渲染画面为准；已发布版本发现瑕疵时附证据告诉作者，按严重程度给选项，由作者决定，下架或重发交给发布能力。"
+  - risk: "360 素材重投影时取景窗跨双鱼眼拼缝，或派生横版时新露出竖版窗口外的人、车牌、拼缝与自拍杆。"
+    mitigation: "按取景窗四角到光轴的角距检查拼缝，而不只看水平视场；横版逐镜头覆盖全部使用区间做联系表复核，重点看新露出的区域，敏感画面退回已批准画面居中。"
 references:
   - title: "Primary Skill instructions"
     path: "SKILL.md"
@@ -68,6 +73,18 @@ references:
     path: "references/screen-studio-remotion-qc.md"
   - title: "Incremental iteration contract"
     path: "references/iteration-performance.md"
+  - title: "Delivery contract"
+    path: "references/delivery-contract.md"
+  - title: "Narrative vlog editing"
+    path: "references/narrative-vlog.md"
+  - title: "360 reframing"
+    path: "references/360-reframe.md"
+  - title: "Platform variants"
+    path: "references/platform-variants.md"
+  - title: "Review page"
+    path: "references/review-page.md"
+  - title: "Remotion pipeline pitfalls"
+    path: "references/remotion-pipeline-pitfalls.md"
 output:
   types:
     - "Remotion Studio primary preview with current authoritative subtitles and final audio"
@@ -77,6 +94,7 @@ output:
     - "edit manifest and quality reports"
     - "incremental iteration plan and wall-clock timing report"
     - "Remotion Studio preview plus horizontal and, when under 10 minutes, vertical compositions"
+    - "for long narrative films, a review page with storyboard and full asset tables, plus a second-platform version derived from the locked timeline"
   formats:
     - "H.264/AAC/SubRip MKV"
     - "H.264/AAC MP4"
@@ -101,6 +119,7 @@ output:
     - "incremental invalidation regression tests and per-stage wall-clock evidence"
     - "embedded SubRip extraction and cue-by-cue round-trip validation"
     - "visual inspection of each rendered cover plus dimensions, safe-zone, and edge-bar checks"
+    - "pre-publication privacy scan of the encoded file: detectors on every frame and a manual contact sheet at 5 fps or more"
   description: "输出文件与证据报告共同构成交付物；线上发布状态只有在真实回读后才成立。"
 ethical_considerations: "只处理用户提供或有权使用的素材；保留来源和授权信息，不伪造发布证据，不把个人账号、Cookie 或凭据写进 Skill、EDL 或报告。"
 dimensions:

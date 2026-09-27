@@ -212,5 +212,174 @@
         "scope": "This run tests the reusable CLI on 30.8 seconds; the earlier 48-clip batch is context, not claimed as produced again by this CLI."
       }
     }
+  },
+  {
+    "id": "kailash-kora-travel-vlog",
+    "type": "case",
+    "title": "《我所看见的冈仁波齐》：把全景相机和手机素材剪成 13 分钟转山 vlog，竖横两版",
+    "description": "作者给出全景相机与手机拍摄的转山素材、已发表的转山文章和 2021 年骑行时的旧素材，要一条大片风格的转山 vlog。经 v0.1–v0.8 八版审片，纠正了字卡照搬文章独白、配乐为口播断档、手机素材长期未入片、360 对话镜头给错对象等问题；后期改为作者在线、在 Remotion Studio 里逐轮快速审。片名起初沿用 brief 里的主题句，后来按作者要求改为与已发表文章一致的《我所看见的冈仁波齐》。终版 13 分 47 秒，先交视频号竖版，再从同一时间线逐镜头重新取景派生 B 站横版。",
+    "input": {
+      "items": [
+        "双鱼眼全景相机拍摄的转山素材",
+        "手机视频与手机照片",
+        "作者已发表的冈仁波齐转山文章",
+        "2021 年骑行时作者在社交平台发布的照片，以及一段旧视频作品（经作者同意取用）",
+        "作者提供的候选配乐",
+        "品牌水印与 logo"
+      ],
+      "source_profile": {
+        "source_type": "360 dual-fisheye footage + phone video and photos + published article",
+        "panoramic_segments": 77,
+        "panoramic_size_gb": 75.9,
+        "panoramic_minutes": 147.8,
+        "phone_videos": 22,
+        "phone_photos": 625
+      },
+      "material_funnel": [
+        {
+          "material": "全景视频",
+          "source": "原始 77 段、75.9 GB、约 147.8 分钟",
+          "reviewed": "按天逐段看、逐镜头定取景",
+          "used": "60 个镜头，出自其中 35 段",
+          "film_seconds": 587.7
+        },
+        {
+          "material": "手机视频",
+          "source": "原始 22 段、约 9.9 分钟",
+          "reviewed": "全部看过",
+          "used": "10 段",
+          "film_seconds": 57.4
+        },
+        {
+          "material": "手机照片",
+          "source": "原始 625 张（另有 113 张截图未用）",
+          "reviewed": "623 张入索引、37 张缩略图墙逐批审、82 张复核保留、21 张剔除",
+          "used": "34 张",
+          "film_seconds": null
+        },
+        {
+          "material": "2021 骑行社交平台照片",
+          "source": "原始 527 张",
+          "reviewed": "按行程与原文配对",
+          "used": "10 张",
+          "film_seconds": null
+        },
+        {
+          "material": "2021 旧视频作品",
+          "source": "1 段（经作者同意取用）",
+          "reviewed": null,
+          "used": "1 段（静音）",
+          "film_seconds": 9.8
+        },
+        {
+          "material": "其他静帧",
+          "source": "日照金山照片、星空标注图各 1 张",
+          "reviewed": null,
+          "used": "2 张",
+          "film_seconds": null
+        },
+        {
+          "material": "照片类静帧合计",
+          "source": "手机照片 34 + 2021 骑行照片 10 + 其他静帧 2",
+          "reviewed": null,
+          "used": "46 张",
+          "film_seconds": 161.5
+        },
+        {
+          "material": "口播与现场对话",
+          "source": "73 条候选、剪出片段约 850.8 秒",
+          "reviewed": "转写并逐句对口型",
+          "used": "49 条，字幕 150 条",
+          "film_seconds": null
+        },
+        {
+          "material": "配乐",
+          "source": "23 首可播放候选",
+          "reviewed": "按叙事分段试配",
+          "used": "10 首、11 段 cue，全片连续",
+          "film_seconds": null
+        },
+        {
+          "material": "版本",
+          "source": "v0.1–v0.8 共 8 版",
+          "reviewed": "前 6 版出审阅视频，v0.7、v0.8 在 Studio 审",
+          "used": "v0.8 定稿",
+          "film_seconds": null
+        },
+        {
+          "material": "横版派生",
+          "source": "71 个镜头 + 46 张静帧",
+          "reviewed": "两轮取景、两轮独立复核",
+          "used": "全部重新取景，横版另做 3 处隐私处理",
+          "film_seconds": null
+        },
+        {
+          "material": "片中时长合计",
+          "source": "587.7 + 57.4 + 9.8 + 161.5 + 黑场 10.6",
+          "reviewed": null,
+          "used": "827 秒",
+          "film_seconds": 827
+        }
+      ]
+    },
+    "prompt": "基于我这次冈仁波齐转山的记录与以下素材，创作一条转山 Vlog：大片风格，展现自然风光、人文情节与内心复杂叙事，有深度有广度，时长自由，面向创业者、奋斗向，主题《我为什么一定要去冈仁波齐》。",
+    "output": {
+      "items": [
+        "视频号竖版：1080×1920、30fps、H.264 High、总码率约 8.7 Mbps（视频 8.36 Mbps）、AAC 48kHz、13:47（827.05 秒），SHA-256 69d06577363e45a45d987b9836d430b27dc5d4701305850cd8f5cf138309b605",
+        "B 站横版：1920×1080、30fps、H.264、总码率约 20.1 Mbps、与竖版同一条混音，SHA-256 cd830063539bb6a578023d20dd64790564766f5bc07a8e4c33fdfdf8007c8329",
+        "母带 −16.0 LUFS-I、−3.0 dBTP",
+        "封面：同一视觉派生 3:4、4:3、16:9 三个比例",
+        "烧录字幕、按真实拍摄时间走的 REC 时间水印、品牌片头与片尾"
+      ],
+      "editorial_changes": [
+        "多方案长工作流（多个剪辑 agent 加评审，一轮 3 小时以上）改为作者在线时由主 agent 直剪，在 Remotion Studio 逐轮快速审",
+        "字卡只交代日期、地点、海拔与体征，文章里的内心独白不再搬成字幕，字卡由 45 张减到 8 张",
+        "开场由黑屏提问加鼓点改为茶馆里新认识的人的轻松对话；黑场转场只留片尾 1 处，全片按真实时间顺序推进",
+        "补入手机视频与照片，回忆段用作者 2021 年骑行时发布的 10 张照片和一段旧视频，并加年份角标",
+        "配乐改为全片连续：10 首 11 段 cue，一首放到下一首接手，口播只压低不停歌，作者点名的曲目按其建议位置落位",
+        "逐设备校准相机时钟后，加入按真实拍摄时间走的 REC 时间水印",
+        "片名由 brief 里的主题句改为与已发表文章一致的《我所看见的冈仁波齐》",
+        "B 站横版不裁竖版：每个 360 镜头按新画幅重新取景，两轮取景、两轮独立复核新露出的区域",
+        "B 站版发布前的隐私扫描发现车牌、收款码和遗照墙，在横版逐帧跟踪打码或退回已批准画面居中"
+      ],
+      "quality_metrics": {
+        "duration_seconds": 827.05,
+        "frame_count": 24810,
+        "shots": 71,
+        "shots_breakdown": "全景 60、手机 10、旧作 1",
+        "stills": 46,
+        "text_cards": 8,
+        "subtitle_cues": 150,
+        "chapters": "3（00:17 出发 / 03:44 第一天 / 09:03 第二天）",
+        "music": "10 首、11 段 cue，全片连续，最长无乐 0.2 秒",
+        "intelligibility": "149 句配对，混音均值 CER 0.2447，纯人声底线 0.2812，通过；逐句差值只用来排抽听顺序",
+        "integrated_lufs_i": -16.0,
+        "true_peak_dbtp": -3.0,
+        "horizontal_review": "71 个镜头 + 46 张静帧：两轮取景、两轮独立复核",
+        "review_rounds": "v0.1–v0.8；前 6 版出审阅视频，v0.7、v0.8 在 Studio 审"
+      },
+      "publication": [
+        {
+          "platform": "WeChat Channels",
+          "title": "我所看见的冈仁波齐",
+          "submitted_at": "2026-09-27 00:55",
+          "state": "platform_pending",
+          "note": "内容列表回读状态为“原创审核中”，尚未回读到已发布状态，因此不记为 published"
+        },
+        {
+          "platform": "Bilibili",
+          "bvid": "BV1Ycah6RESF",
+          "submitted_at": "2026-09-27",
+          "state": "publish_failed",
+          "note": "2026-09-27 晚回读为“已退回”，平台理由原文：“您的视频【P1内容全程】中含有暴力血腥，或危险行为内容”；片中没有相关画面，作者已提交申诉，结果待回读，不是 published"
+        }
+      ]
+    },
+    "evidence": {
+      "acceptance": "user-confirmed",
+      "verified_at": "2026-09-27",
+      "method": "作者在 Remotion Studio 逐轮审片后说“感觉可以发布了”，B 站终稿确认时回复“发”；随后对两份平台文件做 SHA-256 与 FFprobe 回读、ebur128 复测响度与真峰值、完整解码；B 站通过创作者接口回读标题、简介、标签、分区与双封面，视频号回读内容列表。可懂度为逐条字幕切片转写、与纯人声底线配对比较，测于加片尾 logo 卡之前的 v0.8 混音，之后只改了片尾，对白未变。两个平台都没有公开发布回读。",
+      "privacy": "已去除本地路径、原始素材文件名、原始转写、账号与会话信息等私人信息；只保留作者本人公开发布的平台条目与不可逆媒体摘要。提示词按作者原意整理，删去了本地路径。"
+    }
   }
 ]

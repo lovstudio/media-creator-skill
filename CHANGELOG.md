@@ -1,5 +1,38 @@
 # Changelog
 
+## [0.18.0] - 2026-09-27
+
+吸收《我所看见的冈仁波齐》转山 vlog 的创作经验：旅行叙事片、360 重投影、横竖双平台派生与发布前隐私扫描。
+
+### Added
+
+- 新增 references/narrative-vlog.md：按设备盘点素材，空目录主动报告，交付报告附素材对照表；逐设备校准拍摄时间；字卡只交代信息，文章独白不进字幕；现场口播用语音频段包络定剪点并逐句回转写；手机照片逐张审，合照放到人物出场处；回忆段用作者当年的旧素材，获取交给 lov-media-crawler / lov-media-fetch / lov-wdb-cli；人物口径默认以“脸能否被认出”为界；作者有品牌 logo 时的片名卡、REC 时间水印与结尾卡。
+- 新增 references/360-reframe.md：拼缝检查改为取景窗四角到光轴的角距 arccos(cos pitch · cos Δyaw)，符号都有定义；对话场景先认人再定机位；整段复核与 vidstab 防抖；ffmpeg 9 v360 sendcmd 的增量语义；16:9 重投影，脸在横版里不明显大于竖版（约 1.2 倍以内）。
+- 新增 references/platform-variants.md：从锁定时间线派生第二个平台画幅，包括缓存隔离、醒目占位、按帧号比 PSNR 回归、独立版式常量、平台码率和派生版质检。
+- 新增 references/review-page.md：分镜表 + 全量素材表审片页，从第一版起维护；Studio 迭代期不每轮重发，作者要看或进入 locked 时再更新；宿主没有托管页面时回退为本地 HTML；体积上限标为观测实例。
+- 新增 references/remotion-pipeline-pitfalls.md：Studio from= 偏移、音频软链接 404、渲染磁盘、PID 等待、亚帧片段、补丁脚本断言、Whisper 提示词污染与繁转简、找回原图、车牌与收款码打码。
+- delivery-contract：新增 review-page 与 request-list 两项交付物、报告第 14–15 条，以及「发布前隐私扫描」（检测器逐帧，人工联系表不低于 5 fps）。已发布版本发现瑕疵的处理以这里为唯一正文：默认不删、不改、不重发，但必须附证据告诉作者，按严重程度给选项，由作者决定；下架或重发归 lov-media-publisher。
+- iteration-performance 新增「作者在线快速迭代」与「多 agent 批量复核」（以宿主允许子 agent 为前提）；cover-and-title 新增片名优先级与「改编作品与叙事片封面」；skill-composition 补上 lov-media-crawler、lov-wdb-cli、lov-voice2srt 的交接，以及发布字段预填的交接；skill.yaml 新增 records.people_privacy_scope；cases.json 新增 kailash-kora-travel-vlog 案例，含素材对照表，发布状态如实记为视频号 platform_pending、B 站已退回（作者已申诉，结果待回读）。
+
+### Changed
+
+- 叙事片配乐默认从头连到尾：一首放到下一首接手，口播只压低不停歌，这条在叙事片里覆盖 Step 4 第 3 条与 audio-mix 基本策略的暂时静音；静默只给作者要求的段落；交付前扫 score_mix.py --stems 输出的 stem-music.wav，2 秒以上的断档要补，极轻前奏按例外注明。撤回 0.15.0 起“身体到极限、独白可以留白”的写法。作者自己唱歌、呐喊写进 voice.json 按口播句处理，不走 ambient 总线。
+- 同语种歌词压对白从一律避让改为有条件放行：只在作者明确点名该曲垫对白，或明确说不为口播停歌时放行，cue 上记理由与作者原话，并列入报告的放行清单。可懂度仍只按全片配对均值判定；放行句按组求 CER 均值，与纯人声底线对比，逐句差值只用来排抽听顺序。
+- 选曲按当时的真实心境和作者建议的位置；“修改只做减法”限定为 agent 自发的修改；换曲交叉淡化 3 秒改为 cut_metrics.py 的默认下限（终版实测 1–3 秒，中位 1.5 秒）；暂定碎片上限补记 v0.4 的正面反馈，以及终版超限但被作者接受的数据；补充 env 包络的 np.interp 语义，以及 level_db 按片段归一的坑。
+- 作者在线审片时由主 agent 直接改剪辑表、在 Studio 迭代，不默认启动多 agent 长工作流。作者说可以发布不等于字幕已批准：平台 MP4 仍需 subtitle_status=approved 与对应 SRT 的 SHA-256。
+- 片名优先级：用户逐字给定的片名 > 已发表文章的标题 > brief 主题句。视频号封面创建页只有一个 3:4 槽；B 站有 4:3 与 16:9 两个独立槽。作者已选用的封面优先于 lov-channels-cover 的风格锁定，风格锁定只在需要新做封面时套用。
+- 平台码率：视频号按建议 ≤ 10 Mbps 一次出，并写全 bt709 三项；B 站交渲染出的原码率 H.264/AAC MP4，不为码率重压。
+- 不在每轮回复里重复提示授权，但曲目与来源照常记在 cue 表、交付报告或片尾资源页。
+- SKILL.md 描述与 Triggers 补上旅行 Vlog、全景素材、先竖版再横版的触发语，Step 0 路由到五份新 reference，全部为同行替换，行数仍为 499。README 新增“叙事长片、360 素材与多平台派生”一节与示例四。skill-card 同步 use_case、Known Risks、references 与 User Cases，Known Risks 新增两条：首发版本漏掉的隐私画面，以及 360 跨拼缝与横版新露出的区域。
+
+### Known limitations
+
+- validate_cues.py 没有 cue 级放行字段，作者放行的同语种歌词冲突仍判 ERROR，靠报告的放行清单说明；--max-gap 默认仍是 6 秒，叙事片要显式传 2。
+- cut_metrics.py 的 --min-change-xfade-s 默认仍是 3 秒，会对已接受的 1–3 秒交接报 WARN；进入回忆段会被计成一次拍摄时间倒跳。
+- score_mix.py 的 level_db 仍按 cue 截取的片段归一，只截安静前奏的 cue 会被抬高，需要手工改 gain_db。
+- 360、平台码率与审片页里的数值只来自一台双鱼眼相机、一部片和当时的宿主工具，换机型、ffmpeg 版本或宿主都要重测。
+- SKILL.md 为 499 行，已贴近 500 行上限。
+
 ## [0.17.0] - 2026-09-26
 
 ### Added

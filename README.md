@@ -1,6 +1,6 @@
 # 天才剪辑师 · Video Studio
 
-![Version](https://img.shields.io/badge/version-0.17.0-CC785C)
+![Version](https://img.shields.io/badge/version-0.18.0-CC785C)
 
 把 MP4 或 `.screenstudio` 源工程整理成两阶段交付：先做 Remotion Studio 与字幕审校版本，再以批准字幕生成归档母版、平台文件和正式封面图片。源工程模式保留独立屏幕、摄像头、麦克风、系统声、鼠标和快捷键事件；跨平台任务先完成并质检视频号 9:16，再顺序派生 B 站 16:9。
 
@@ -78,10 +78,13 @@ python3 scripts/iteration_plan.py plan \
 ## 叙事片多曲配乐
 
 Vlog、旅行、纪录和宣传片不套用系列默认曲。用户给的曲库整体可用，不按对话里点名的几首收窄，只以成片效果取舍；
-每条 cue 写明叙事或情绪理由，同语种歌词不压对白，歌词默认避开屏幕字卡，留白写明理由。
+作者点名的曲目先按作者建议的位置试，选曲按这一段当时的真实心境。每条 cue 写明叙事或情绪理由；配乐默认从头连到尾，
+一首放到下一首接手，口播只压低不停歌，静默只给作者要求的段落，交付前扫音乐 stem 上 2 秒以上的断档。同语种歌词
+默认不压对白，只有作者明确点名该曲垫对白、或明确说不为口播停歌时才有条件放行：cue 上记理由与作者原话，放行句
+按组求 CER 均值对比纯人声底线，逐句差值只排抽听顺序；歌词默认避开屏幕字卡。
 人声与音乐不必互斥：每个时刻选 `clear`（音乐让开）、`blend`（音乐在人声下持续在场）或 `feature`（音乐主导），
 段落之间留足气口，不用一串 3–5 秒字卡连续推进。局部都合规的片子仍可能碎成马赛克：以场景为单位、少换曲、
-修改只做减法，并用 `cut_metrics.py` 测量画面与配乐的碎片化（上限为暂定值，默认只报警）。
+agent 自发的修改只做减法（作者点名的补充照做并记录），并用 `cut_metrics.py` 测量画面与配乐的碎片化（上限为暂定值，默认只报警）。
 
 ```bash
 python3 scripts/bgm_tracks.py --library MUSIC_DIR --output work/music/tracks.json --summary work/music/tracks.md
@@ -92,7 +95,7 @@ python3 scripts/intelligibility.py --mix work/audio/mix/final-mix.wav --srt subs
 python3 scripts/cut_metrics.py --film work/music/film.json --cues work/music/cues.json --json work/music/cut-metrics.json
 ```
 
-门禁是防止听不清的底线，数值为校准参考：cue 表 0 ERROR；语音频段 SMR 按意图判定（`clear` 中位数 ≥ 16 dB、p10 ≥ 8 dB，
+门禁是防止听不清的底线，数值为校准参考：cue 表 0 ERROR（作者放行的歌词冲突除外，列入放行清单）；语音频段 SMR 按意图判定（`clear` 中位数 ≥ 16 dB、p10 ≥ 8 dB，
 `blend` 中位数 ≥ 10 dB、p10 ≥ 4 dB，`feature` 只记录）；逐条字幕切片转写的平均 CER 比纯人声底线高出不超过 0.02；
 母带线性处理到 `-16 LUFS-I / -3 dBTP`，给 AAC 编码后的峰值回升留余量。数据格式与规则见
 [`references/audio-mix.md`](references/audio-mix.md)。
@@ -104,6 +107,22 @@ python3 scripts/cut_metrics.py --film work/music/film.json --cues work/music/cue
 示例三：
 
 > 直接读取这个 `.screenstudio` 工程，做横版和十分钟内的竖版；摄像头保持连续，动画不要遮住实际操作，重要产品用官网信息卡，最后列出全部素材与网址。
+
+## 叙事长片、360 素材与多平台派生
+
+旅行、纪录类长片另有五份参考：
+
+- [`references/narrative-vlog.md`](references/narrative-vlog.md)：按设备盘点素材、校准拍摄时间、字卡只交代信息、现场口播剪点、照片与合照、人物口径（默认以“脸能否被认出”为界）、时间水印与片名 / 结尾卡。
+- [`references/360-reframe.md`](references/360-reframe.md)：双鱼眼拼缝的四角角距检查、对话机位、整段复核与防抖、镜头内运镜、16:9 重投影。
+- [`references/platform-variants.md`](references/platform-variants.md)：从锁定的首发版本派生第二个平台画幅，按帧号比 PSNR 回归、平台码率与派生版质检。
+- [`references/review-page.md`](references/review-page.md)：素材多、跨设备、跨多天时从第一版起维护的分镜表与全量素材表审片页。
+- [`references/remotion-pipeline-pitfalls.md`](references/remotion-pipeline-pitfalls.md)：Studio `from=` 偏移、音频软链接 404、渲染磁盘、亚帧片段、Whisper 提示词污染、打码等管线踩坑。
+
+作者在线审片时由主 agent 直接改剪辑表、只重渲变动镜头并推进 Studio；多个 agent 各出一版再评审的长工作流以宿主允许子 agent 为前提，只在作者离线或明确要多方案比较时用，见 [`references/iteration-performance.md`](references/iteration-performance.md)「作者在线快速迭代」。
+
+示例四：
+
+> 把全景相机和手机拍的旅行素材剪成 vlog，先发视频号竖版，再出 B 站横版。
 
 ## Profile 契约
 
@@ -127,7 +146,8 @@ python3 scripts/cut_metrics.py --film work/music/film.json --cues work/music/cue
 - 成片可解码，画幅、帧率、编码和音频流符合目标平台。
 - Studio 是主预览，加载当前权威字幕与最终音频；需要 Subtitle Edit 时，审校 MKV 恰有一个默认 SubRip 字幕轨，回抽后与外置 SRT 逐条一致；批准前不生成平台文件。
 - 最终结果段连续且有原声；BGM 不遮挡人声或关键反馈。
-- 叙事片配乐混合多首且每条 cue 有理由；同语种歌词不压对白，按时刻声明混音意图，SMR 与 CER 底线通过，母带留到 `-3 dBTP`；碎片化指标不超暂定上限，修改轮次不让碎片指标上升。
+- 叙事片配乐混合多首且每条 cue 有理由；配乐从头连到尾、音乐 stem 无 2 秒以上断档，口播只压低不停歌；同语种歌词默认不压对白，作者明确放行的冲突在 cue 上记理由与作者原话并列入报告，放行句按组求 CER 均值对比纯人声底线；按时刻声明混音意图，SMR 与全片 CER 底线通过，母带留到 `-3 dBTP`；碎片化指标对照暂定上限报告，agent 自发的修改不让碎片指标上升。
+- 首个平台发布前在编码成片上做隐私扫描（检测器逐帧、人工联系表不低于 5 fps）；已发布版本发现瑕疵时的处理见 [`references/delivery-contract.md`](references/delivery-contract.md)「发布前隐私扫描」。
 - 章节标题由该幕实际内容证据归纳；知识传播类章卡默认留 1.8–2.4 秒，只显示章号和标题；顶部导航全程显示全部宏观章节。
 - 竖版章节导航、标题、网址和关键控件避开 iPhone 状态栏、刘海 / 灵动岛与平台顶部导航；安全区由统一常量驱动，并用平台实机截图复核。
 - 每个高风险切点做局部 ASR，最终连续人声做全片 ASR；不得残留独立口水词、错误重念或半句跳转。
