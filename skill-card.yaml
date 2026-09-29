@@ -1,5 +1,5 @@
 schema: lovstudio/skill-card/v1
-version: "0.20.0"
+version: "0.21.0"
 description: "将整场课程和多人交流精剪为独立切片，或将 MP4、Screen Studio 工程整理为 Remotion 成片，完成字幕审校、连续混音、统一包装和实际文件验收。"
 owner:
   team: "Media Creator Maintainers"
@@ -86,6 +86,8 @@ references:
     path: "references/review-page.md"
   - title: "Remotion pipeline pitfalls"
     path: "references/remotion-pipeline-pitfalls.md"
+  - title: "Explainer films"
+    path: "references/explainer-film.md"
 output:
   types:
     - "Remotion Studio primary preview with current authoritative subtitles and final audio"

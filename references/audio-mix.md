@@ -55,6 +55,8 @@ ffmpeg -y -hide_banner \
 
 该命令是结构示例。素材时长、BGM 起止点、视频段落和平台限制应以当前项目为准；渲染后仍需运行 `audio_qc.py`。
 它只适合单条音乐床的录屏：单遍 `loudnorm` 是动态模式，会压扁多曲配乐设计好的电平，叙事片改用下文的线性母带。
+讲解片、产品介绍片这类口播加配乐、留有纯配乐段的混音同样不用它做母带：两遍 `loudnorm` 也可能退回动态模式，
+改走下文「通用线性母带」。
 
 ## 分段混音
 
@@ -338,9 +340,60 @@ null test 的残差为 `-78 dBFS RMS`。导演剪辑版 v0.3 用逐条测法：6
   不要依赖 `uv run --with` 的临时环境：作者机器上的其他清理任务会清空 uv cache，重跑时要重新下载依赖，
   离线时直接失败。
 
+## 通用线性母带
+
+口播与配乐的相对电平是设计过的混音（留了比说话段低几 dB 的纯配乐段、多曲配乐，或停顿处让配乐完全打开），
+母带必须是线性的：整条只乘一个静态增益，削峰交给峰值限制器。按片型分三种情况：
+
+- 叙事片按 SKILL.md 6a 走 `score_mix.py`，它已按线性做法出母带。讲解片、产品介绍片等不经 `score_mix.py` 的
+  口播加配乐片，按下面的步骤手工做。两者都不用 `loudnorm` 做母带，测量用 `ebur128`。
+- 系列栏目按 series-template 做两遍 `loudnorm` 时，第二遍输出必须是 `normalization_type: linear`（这时它只加
+  一个静态增益）；退回 `dynamic` 就改走下面的步骤。
+- 上文结构示例里的单遍 `loudnorm` 只用于单条音乐床、没有纯配乐段要保住的录屏。
+
+两遍 `loudnorm` 在线性增益会让真峰超过目标、或测得的 LRA 超过目标 LRA 时，会静默退回动态模式（第二遍输出里
+是 `normalization_type: dynamic`），把设计好的电平压扁。观测实例（Skill 介绍片，见 [`explainer-film.md`](explainer-film.md)）：原始混音约 −27 LUFS、
+峰值 −7 dBTP，两遍 `loudnorm` 退回动态，纯配乐段从比说话段低 5 dB 被抬到只低 0.7 dB。
+
+1. 人声峰值系数（峰值电平与 RMS 电平之差，用 `astats` 输出的 `Peak level dB` 减 `RMS level dB`）过高时，
+   先在人声轨上做两段压缩加限幅把它压下来（观测实例：压到约 11 dB），免得母带限制器削得太狠。结构示例，
+   尖括号里的参数按素材定：
+   `acompressor=threshold=<T1>:ratio=<R1>,acompressor=threshold=<T2>:ratio=<R2>,alimiter=limit=<L>:level=false`。
+2. 测整条混音的积分响度和真峰；`ebur128` 不加 `peak=true` 不输出真峰。静态增益 = 目标（默认 `-16 LUFS`）
+   减实测积分响度。
+3. 乘增益后过峰值限制器，只削增益后冒出来的峰。`alimiter` 的 `limit` 是线性值（0.0625–1），−5 dBFS 写
+   `0.562`，−6.5 dBFS 写 `0.473`；`level` 默认开启，会把输出自动拉到限幅顶，必须写 `level=false`；
+   `latency=true` 补回前瞻带来的延迟（较新的 FFmpeg 才有这个选项，没有就去掉并自行核对对齐）。限制器按采样峰值工作，AAC 编码后量的是真峰，所以上限要比编码后的真峰
+   目标再低一些；目标按项目定，至少满足下文「质检门槛」。观测实例：采样峰值上限 −5 dBFS，AAC 编码后实测
+   −4.1 dBTP；同一片的加长版要降到 −6.5 dBFS。上限随内容变，换版本就重测，不沿用上一版的值。
+4. 回读积分响度，与目标差 0.3 LU 以上时，把差值加到第 2 步的增益上，从未限幅的混音重做第 3 步，再回读
+   积分响度和真峰。
+5. 编码后用 `audio_qc.py` 复测平台文件，并按「质检门槛」核对纯配乐段与说话段的响度差。
+
+```bash
+# 第 2 步：测量（真峰必须加 peak=true）
+ffmpeg -hide_banner -i mix.wav -af ebur128=peak=true -f null - 2>&1 | tail -14
+# 第 3 步：静态增益 + 限幅（示例：实测 −27 LUFS、目标 −16 时增益 11 dB；上限 −5 dBFS 写 0.562）
+ffmpeg -i mix.wav -af "volume=11dB,alimiter=limit=0.562:level=false:latency=true" -c:a pcm_s24le master.wav
+```
+
+`score_mix.py` 的顺序不同：先按估算上限限幅、再乘静态增益，真峰超了就压低上限重试；叙事片直接用它。
+
 ## 质检门槛
 
 参考目标为 `-16 LUFS-I ±1.5`，True Peak 低于 `-1 dBFS`；叙事片母带另按上文留到 `-3 dBTP`。如果平台或项目有不同规格，报告中同时写出目标与实际值。响度通过不代表内容听感通过，仍要人工确认人声、点击声和最终视频播放段。
+
+口播与配乐电平设计过的片子，母带前后各测一次纯配乐段与说话段的响度差。测法：从剪辑表或 cue 表取出无口播和
+有口播的时间段，各用 `aselect` 选出后测积分响度，两组相减；母带前后用同一组时间段。
+
+```bash
+ffmpeg -hide_banner -i master.wav \
+  -af "aselect='between(t,A1,B1)+between(t,A2,B2)',asetpts=N/SR/TB,ebur128" -f null - 2>&1 | tail -12
+```
+
+母带后的差值应接近混音时的设计值；明显缩小说明母带做了动态处理，回到上文「通用线性母带」。观测实例
+（Skill 介绍片）：同一混音在两遍 `loudnorm` 前纯配乐段比说话段低 5 dB，之后只低 0.7 dB。另一版（重做混音、
+人声两段压缩、线性母带）的终版纯配乐段比说话段低 4.1 dB，−16.1 LUFS / −4.1 dBTP；该版母带前的差值未记录。
 
 Remotion Studio 是主预览时，必须播放这条已通过质检的最终混音，不能在 Studio 里重新叠加原始
 麦克风、系统声和 BGM。预览音频与批准母版音频应同源；可直接从批准母版 stream copy 为浏览器友好

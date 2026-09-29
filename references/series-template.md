@@ -178,7 +178,7 @@ cue 结尾早于句尾时必须向后扩到整句落稳。定边界后再检查�
 - 横版舞台按宽度装会溢出画布，必须按 `canvas_h - rail_h` 反推宽（2026-09-05, 44885a9）
 - 字幕用 `left:50%+translateX(-50%)` 时包含块只有半幅宽、`max-width` 失效会断词，改 `left:0;right:0;margin:0 auto;width:fit-content`（2026-09-05, 44885a9）
 - 摄像头卡与源同宽高比时 `object-fit:cover` 等于不裁，推近必须自己写 `transform:scale()`（2026-09-05, 44885a9）
-- 单遍 `loudnorm` 偏 2–3 LU，响度归一要在最终混音上做两遍并回读 `ebur128`（2026-09-05, 44885a9）
+- 单遍 `loudnorm` 偏 2–3 LU，响度归一要在最终混音上做两遍并回读 `ebur128`（2026-09-05, 44885a9）（2026-09-29 起：第二遍必须是 `normalization_type: linear`，退回 dynamic 时改走 audio-mix「通用线性母带」）
 - `whisper-cli` 的 `-ml 1 -sow` 对中文不切词，词级时间戳只能用 `-dtw large.v3.turbo -ojf`（2026-09-05, 44885a9）
 - 新版 ffmpeg 已移除 `-vsync`，逐帧抽帧改用 `-fps_mode passthrough`（2026-09-05, 44885a9）
 - 源片两端断在句中时先做可用性判定再开工，不足一句完整话的素材只能交微片段（2026-09-05, 44885a9）
@@ -547,7 +547,7 @@ zsh 里 `set -- $spec` **不做词分割**，循环里批量切片会静默地�
 - whisper.cpp 的 segment `from` 会被拉长到上一段的 `to`，只有 `to` 可信，归属一律按 `to` 判（2026-09-04, f2a6ca4）
 - 选段表（删除/版式/保护）必须按源时间锚定，段序号会因合并阈值上的一次舍入整体错位且无门禁报错（2026-09-04, f2a6ca4）
 - 每一条删除都要用短窗 ASR 听原声再定；按转写文本判"重复"会吃掉被停顿劈开的下半句（2026-09-04, f2a6ca4）
-- `alimiter` 默认 `level=true` 会把输出自动拉到限幅顶，真峰会被顶到 0.0 dBFS；改用两遍 loudnorm 线性归一化（2026-09-04, f2a6ca4）
+- `alimiter` 默认 `level=true` 会把输出自动拉到限幅顶，真峰会被顶到 0.0 dBFS；改用两遍 loudnorm 线性归一化（2026-09-04, f2a6ca4）（2026-09-29 起：写 `level=false` 后 `alimiter` 仍可只做限峰；两遍 loudnorm 也可能退回动态模式，第二遍必须是 `normalization_type: linear`，见 audio-mix「通用线性母带」）
 - Screen Studio 的 display 通道不含指针，演示片必须从 mousemoves/mouseclicks 自行重建（2026-09-04, f2a6ca4）
 - `subtitle_gate.py review` 拒绝覆盖已存在的审校 MKV，重跑要换 review 版本号而不是删文件（2026-09-04, f2a6ca4）
 - `pkill -f "remotion render"` 杀不掉 node CLI 子进程，残留渲染会和新渲染抢 CPU 并写同一个输出文件；按 pid 杀（2026-09-04, f2a6ca4）

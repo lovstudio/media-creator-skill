@@ -17,7 +17,7 @@ dependencies:
     install: "npx -y lovstudio@latest skills add media-publisher -y"
 metadata:
   author: contributors
-  version: "0.20.0"
+  version: "0.21.0"
   card_standard: lovstudio/skill-card/v1
   tags: [media-production, video-editing, ffmpeg, audio-mix, delivery-qc, cover-assets, opening-still, screen-studio, remotion]
   compatibility: "Python 3.8+, FFmpeg/FFprobe, numpy for narrative BGM gates, optional Whisper, Pillow or an image tool for cover assets; optional lov-media-publisher hand-off needs ego-browser and logged-in creator accounts, editing needs neither."
@@ -37,6 +37,7 @@ metadata:
 - 用户希望把长录屏整理成有开场、问题、操作证据和最终结果的短视频。
 - 用户提供 `.screenstudio` 源工程，希望重新控制摄像头位置、鼠标/快捷键、背景、音乐和画面包装。
 - 用户要求结合 Remotion 做动画、转场、可视化解释、专业字幕、横竖版和封面。
+- 用户要做一条第一人称讲自己产品或 Skill 的讲解片，片中引用已发布成片作佐证。
 - 用户说“把已经录了几期的素材、work 和成片按期整理，后面还要持续做这个栏目”。
 - 用户说“先给我内嵌 SRT 的 MKV，我用 Subtitle Edit 改完再出最终成片”。
 - 用户明确说“把封面当第一帧”或“开头停一下再进正片”时，才启用可选开场静帧；否则直接跳过，不再提问。
@@ -68,7 +69,7 @@ metadata:
 - 使用环境中的 `SKILL_DIR`；没有时从当前 Skill 上下文推断安装目录。
 - 先验证 `$SKILL_DIR/scripts/media_probe.py`、`timeline_check.py`、`audio_qc.py`、`check_opening_still.py`、`subtitle_gate.py`、`profile_store.py` 与 `iteration_plan.py` 是否存在；叙事片多曲配乐另验证 `bgm_tracks.py`、`validate_cues.py`、`smr_check.py`、`score_mix.py`、`intelligibility.py`、`cut_metrics.py`。
 - 再验证 media workflow、edit manifest、audio mix、cover/title、delivery contract 与 [`references/iteration-performance.md`](references/iteration-performance.md)；Screen Studio / Remotion 项目还要读取 [`references/screen-studio-remotion-qc.md`](references/screen-studio-remotion-qc.md)。
-- 持续栏目或已有多期素材时，另外验证并读取 `$SKILL_DIR/references/project-workspace.md`；Vlog / 旅行 / 纪录等叙事片读 [`references/narrative-vlog.md`](references/narrative-vlog.md)，素材多、跨设备、跨多天的长片另读 [`references/review-page.md`](references/review-page.md)；含 360 素材读 [`references/360-reframe.md`](references/360-reframe.md)，派生第二个平台画幅读 [`references/platform-variants.md`](references/platform-variants.md)，Remotion / FFmpeg / ASR 管线踩坑见 [`references/remotion-pipeline-pitfalls.md`](references/remotion-pipeline-pitfalls.md)。
+- 持续栏目或已有多期素材时，另外验证并读取 `$SKILL_DIR/references/project-workspace.md`；Vlog / 旅行 / 纪录等叙事片读 [`references/narrative-vlog.md`](references/narrative-vlog.md)，素材多、跨设备、跨多天的长片另读 [`references/review-page.md`](references/review-page.md)；作者第一人称讲产品或 Skill、引用已发布成片的讲解片读 [`references/explainer-film.md`](references/explainer-film.md)；含 360 素材读 [`references/360-reframe.md`](references/360-reframe.md)，派生第二个平台画幅读 [`references/platform-variants.md`](references/platform-variants.md)，Remotion / FFmpeg / ASR 管线踩坑见 [`references/remotion-pipeline-pitfalls.md`](references/remotion-pipeline-pitfalls.md)。
 - 视频检查或渲染需要 `ffprobe` 与 `ffmpeg`。发布或 `platform-ready` 且没有已批准封面时，新图是必需项：立即启动封面分支。
 - 永远不覆盖源视频、源音频或原字幕；输出先落到独立的 `deliverables` 或用户指定目录。
 - `.screenstudio` 是只读源工程包：不得原地改写 `project.json`、`recording/*.m4s`、transcript 或事件文件。
@@ -98,7 +99,7 @@ export SKILL_DIR="/path/to/lov-media-creator"
 跨平台任务默认以视频号为首个 production target：先制作、渲染并完整质检 9:16、1080×1920、
 30fps、H.264、AAC 48kHz 竖版，首发前按 [`references/delivery-contract.md`](references/delivery-contract.md)「发布前隐私扫描」扫完编码成片（检测器逐帧、人工联系表 ≥ 5 fps）；
 达到 `platform-ready` 后先核对交付约定，把“按约定派生”与“复用现有版本”连同工时交作者选，再从同一锁定时间轴派生并质检
-B 站 16:9、1920×1080 横版（见 [`references/platform-variants.md`](references/platform-variants.md)）。两个全片渲染默认顺序执行，只有短窗 benchmark 证明并行能缩短总墙钟时才并行。
+B 站 16:9、1920×1080 横版（见 [`references/platform-variants.md`](references/platform-variants.md)）。两个全片渲染默认顺序执行，只有短窗 benchmark 证明并行能缩短总墙钟时才并行。两个画幅共用场景代码时的双画幅自检、已发布画幅静帧门禁与音频原样复制，见 platform-variants「同一条时间线，只换画面与版式」。
 已发布版本发现瑕疵时按 delivery-contract 同节告知作者、给选项。明确请求或 Profile 有其他设置时，以当前请求为准。
 
 #### Screen Studio 源工程是一等输入
@@ -425,7 +426,7 @@ ffmpeg -v error -i REVIEW_OR_APPROVED_OUTPUT -f null -
 或意外静帧、上传弹窗没有占据主体、正式封面缩略图仍能读出主题。封面必须打开实际图片目视检查；
 `spec.json`、生成日志、文件名和 `cover-brief.md` 都不能替代看图。审校版还要确认 MKV 中恰有一个默认
 SubRip 字幕轨，并回抽与外置 SRT 逐条一致。目标响度参考 `-16 LUFS-I ±1.5`，True Peak 控制在
-`-1 dBFS` 以下；实际值以报告为准。
+`-1 dBFS` 以下；实际值以报告为准。口播加配乐、留有纯配乐段的片子，母带用静态增益加峰值限制器，不用会退回动态模式的 `loudnorm`；单条音乐床的录屏不受此限，见 [`references/audio-mix.md`](references/audio-mix.md)「通用线性母带」。
 
 最终 MP4 / MKV 另抽覆盖实际开场策略、`camera-full`、画中画、并排和收尾的代表帧联系表，确认脸部主体、
 裁切与 `object-position` 正确，无胡须或额头异常局部；证据必须来自编码文件，不来自 Studio / DOM。

@@ -10,7 +10,8 @@
 1. **从字幕里定位，不靠记忆。** 遍历 cue 文本匹配名字，拿到源时间，再用和 `build_subs.py`
    同一套 `to_out()` 映射到成片时间。凭印象标时间点会错开几秒，而卡片错开就等于挡错地方。
 2. **确认它到底是什么，再决定要不要贴。** 自研产品优先读取官网当前主标题、完整域名与 2–3 个
-   可核验要点；名字也可能是 ASR 猜的（`Pagent` → Pi Agent、
+   可核验要点；自研产品的价格、授权与是否开源也只按官网实时页写，见 [`media-workflow.md`](media-workflow.md)
+   「文案与主题」。名字也可能是 ASR 猜的（`Pagent` → Pi Agent、
    `还有ref` → Ralph）。先 WebSearch 核对一次：Pi Agent 是 pi.dev，四个工具 + ~300 词
    system prompt；Ralph 不是产品而是 ghuntley.com/ralph 那个循环技法。核不出来的宁可不贴。
 3. **抓 hero 区**，用 `$ego-browser`（见下面的坑）。裁上部 55%~60%：hero 的标题和一句话

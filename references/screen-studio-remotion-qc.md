@@ -131,6 +131,7 @@ Remotion Studio 预览中的 `OffthreadVideo` 常由 `<video>` 承载，最终�
 
 卡片通常晚于产品名约 0.25–0.4 秒进入，先让观众听到名字；字幕始终优先可读。卡片结束后回到
 真实演示画面。第三方内容另遵守 `pip-research.md` 的版权、真人脸与裁切门禁。
+价格、授权与是否开源的核对口径（自研产品只按官网实时页写）见 [`media-workflow.md`](media-workflow.md)「文案与主题」。
 
 ## 6. 片尾资源索引是交付物
 

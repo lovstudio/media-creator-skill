@@ -66,6 +66,7 @@ Global, in a local Agent Skills environment on macOS, Linux or Windows.
 - [Platform variants](references/platform-variants.md)
 - [Review page](references/review-page.md)
 - [Remotion pipeline pitfalls](references/remotion-pipeline-pitfalls.md)
+- [Explainer films](references/explainer-film.md)
 
 ## Skill Output
 
@@ -73,7 +74,7 @@ The primary preview is Remotion Studio with the current authoritative edit state
 
 ## Skill Version
 
-0.20.0
+0.21.0
 
 ## Ethical Considerations
 

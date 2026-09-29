@@ -1,6 +1,6 @@
 # 天才剪辑师 · Video Studio
 
-![Version](https://img.shields.io/badge/version-0.20.0-CC785C)
+![Version](https://img.shields.io/badge/version-0.21.0-CC785C)
 
 把 MP4 或 `.screenstudio` 源工程整理成两阶段交付：先做 Remotion Studio 与字幕审校版本，再以批准字幕生成归档母版、平台文件和正式封面图片。源工程模式保留独立屏幕、摄像头、麦克风、系统声、鼠标和快捷键事件；跨平台任务先完成并质检视频号 9:16，再顺序派生 B 站 16:9。
 
@@ -124,7 +124,7 @@ python3 scripts/cut_metrics.py --film work/music/film.json --cues work/music/cue
 
 - [`references/narrative-vlog.md`](references/narrative-vlog.md)：按设备盘点素材、校准拍摄时间、字卡只交代信息、现场口播剪点、照片与合照、人物口径（默认以“脸能否被认出”为界）、时间水印与片名 / 结尾卡。
 - [`references/360-reframe.md`](references/360-reframe.md)：双鱼眼拼缝的四角角距检查、对话机位、整段复核与防抖、镜头内运镜、16:9 重投影。
-- [`references/platform-variants.md`](references/platform-variants.md)：从锁定的首发版本派生第二个平台画幅，按帧号比 PSNR 回归、平台码率与派生版质检。
+- [`references/platform-variants.md`](references/platform-variants.md)：从锁定的首发版本派生第二个平台画幅，按帧号比 PSNR 回归、已发布画幅静帧基线（没有一帧判为变化）、音频原样复制、平台码率与派生版质检。
 - [`references/review-page.md`](references/review-page.md)：素材多、跨设备、跨多天时从第一版起维护的分镜表与全量素材表审片页。
 - [`references/remotion-pipeline-pitfalls.md`](references/remotion-pipeline-pitfalls.md)：Studio `from=` 偏移、音频软链接 404、渲染磁盘、亚帧片段、Whisper 提示词污染、打码等管线踩坑。
 
@@ -133,6 +133,10 @@ python3 scripts/cut_metrics.py --film work/music/film.json --cues work/music/cue
 示例四：
 
 > 把全景相机和手机拍的旅行素材剪成 vlog，先发视频号竖版，再出 B 站横版。
+
+## 讲解片
+
+作者第一人称讲产品或 Skill、片中引用已发布成片的讲解片，见 [`references/explainer-film.md`](references/explainer-film.md)：成片片段统一套「成片播放窗」；重录旁白后按实测说话起止重新对时，画面做完后才发现切点切字时只在音频一侧修。首发画幅已发布后从同一套场景代码派生第二画幅时，以已发布画幅静帧没有一帧判为变化为回归门禁，音频从首发成片原样复制，见 [`references/platform-variants.md`](references/platform-variants.md)。
 
 ## Profile 契约
 
