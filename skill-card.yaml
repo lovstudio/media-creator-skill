@@ -1,12 +1,12 @@
 schema: lovstudio/skill-card/v1
-version: "0.21.0"
+version: "0.21.1"
 description: "将整场课程和多人交流精剪为独立切片，或将 MP4、Screen Studio 工程整理为 Remotion 成片，完成字幕审校、连续混音、统一包装和实际文件验收。"
 owner:
   team: "Media Creator Maintainers"
   contact: "Repository issue tracker"
 license:
-  name: MIT
-  terms: "允许使用、修改和分发；保留版权与许可声明。"
+  name: Commercial
+  terms: "商业授权，保留所有权利；在 Lovstudio.AI 以 PRO 单项购买，安装包与文档按权益开放。此前以 MIT 发布的旧版本对当时取得的副本仍按 MIT。"
   url: "LICENSE"
 use_case:
   audience: "需要把真实操作过程整理为短视频的创作者、产品团队和工作流记录者；也包括用全景相机、手机等多设备素材做旅行与纪录类叙事片、并要发多个平台版本的作者"
@@ -147,21 +147,24 @@ dimensions:
     evidence: "真实案例记录视频号对象 ID、回读状态 status=1、isPostProcessSuccess=true、isPostHasPosted=true，并最终标记 published。"
     score: "evidence-backed"
 pricing:
-  model: free
+  model: paid
   currency: CNY
-  list_price_cny: 0
-  basis: "本地 Skill 通过可复用的媒体清单、FFmpeg 操作规范、原声保护规则和质检脚本降低重复剪辑与返工成本。"
-  boundary: "免费范围包含本地制作指令、探测/时间线/音频质检脚本和交付模板；不包含云端渲染、素材版权、平台账号或发布代操作。"
-  review_trigger: "当新增平台编码要求、云端渲染服务或持续维护成本，重新评估是否拆出付费执行服务。"
+  list_price_cny: 99
+  list_price_credits: 1394
+  basis: "1,394 Credits 是完整本地媒体制作工作流的一次性价格，用于验证付费转化；它不是定制剪辑、托管执行或成本回收价。"
+  boundary: "覆盖素材扫描、剪辑规划、字幕审校、FFmpeg 渲染、原声与 BGM 混音、各槽位正式封面和交付质检；云端渲染、版权素材、账号和代发布按实际条件处理。"
+  review_trigger: "首发 30 天、100 次付费兑换、版本变化，或平台交付规范与单买家支持成本明显变化时复评。"
   confidence: internal
 distribution:
   paid:
+    - channel: lovstudio
+      status: verified
+      evidence: "2026-09-29 读取官网详情页 lovstudio.ai/skills/media-creator：PRO · 1,394 Credits，单项购买，源码可见性为「商业版：安装包与文档按权益开放」，页面版本 v0.20.0"
     - channel: workbuddy
       status: not-published
     - channel: skillpay
       status: not-published
   free:
     - channel: github
-      status: not-published
-    - channel: lovstudio
-      status: local-only
+      status: public-source
+      evidence: "源码仓库 lovstudio/media-creator-skill 当前为公开仓库（2026-09-29 gh 回读 visibility=PUBLIC），与商业授权口径不一致，是否转为私有待作者决定"

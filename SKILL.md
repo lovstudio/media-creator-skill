@@ -3,7 +3,7 @@ name: lov-media-creator
 description: >
   把整场课程/多人交流实录剪成独立切片，或把 MP4、Screen Studio 源工程、旅行 Vlog 与全景素材剪成 Remotion 成片；完成精剪、字幕、连续混音、动画、横竖版与封面。
   Use when editing recordings or .screenstudio projects into review or publish-ready videos.
-license: MIT
+license: Commercial
 compatibility: >
   Portable Agent Skills format. Requires Python 3.8+ and FFmpeg/FFprobe; narrative BGM scoring gates need numpy, and the intelligibility gate needs mlx-whisper or openai-whisper.
   Screen Studio source-project integration additionally requires Node.js and Remotion.
@@ -17,7 +17,7 @@ dependencies:
     install: "npx -y lovstudio@latest skills add media-publisher -y"
 metadata:
   author: contributors
-  version: "0.21.0"
+  version: "0.21.1"
   card_standard: lovstudio/skill-card/v1
   tags: [media-production, video-editing, ffmpeg, audio-mix, delivery-qc, cover-assets, opening-still, screen-studio, remotion]
   compatibility: "Python 3.8+, FFmpeg/FFprobe, numpy for narrative BGM gates, optional Whisper, Pillow or an image tool for cover assets; optional lov-media-publisher hand-off needs ego-browser and logged-in creator accounts, editing needs neither."

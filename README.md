@@ -1,6 +1,6 @@
 # 天才剪辑师 · Video Studio
 
-![Version](https://img.shields.io/badge/version-0.21.0-CC785C)
+![Version](https://img.shields.io/badge/version-0.21.1-CC785C)
 
 把 MP4 或 `.screenstudio` 源工程整理成两阶段交付：先做 Remotion Studio 与字幕审校版本，再以批准字幕生成归档母版、平台文件和正式封面图片。源工程模式保留独立屏幕、摄像头、麦克风、系统声、鼠标和快捷键事件；跨平台任务先完成并质检视频号 9:16，再顺序派生 B 站 16:9。
 
@@ -201,7 +201,7 @@ python3 scripts/cut_metrics.py --film work/music/film.json --cues work/music/cue
 
 - [`skill-card.yaml`](skill-card.yaml) / [`skill-card.md`](skill-card.md)：用途、负责人、依赖、风险、输出与维度地图。
 - [`cases/cases.json`](cases/cases.json)：真实 Input → Prompt → Output 证据。
-- [`pricing-card.yaml`](pricing-card.yaml)：价值锚点、免费边界和复评条件。
+- [`pricing-card.yaml`](pricing-card.yaml)：价值锚点、定价依据、使用边界和复评条件。
 
 ## 质量门
 
@@ -226,4 +226,4 @@ for s in bgm_tracks validate_cues smr_check score_mix intelligibility cut_metric
 
 ## License
 
-MIT
+Commercial — All rights reserved.（官网 PRO，按权益开放安装包与文档；详见 [`LICENSE`](LICENSE)）

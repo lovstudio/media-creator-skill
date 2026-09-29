@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.21.1] - 2026-09-29
+
+### Fixed
+
+- 授权与定价元数据改为商业版 PRO，与官网一致
+- license 由 MIT 改为 Commercial：SKILL.md frontmatter、LICENSE、README、skill-card.yaml/.md；注明此前以 MIT 取得的旧版副本仍按 MIT
+- pricing-card 与 skill-card 定价改为 paid：1,394 Credits（约 ¥99，按官网换算规则），定价依据、使用边界与复评条件照 2026-09-29 官网详情页
+- 分发渠道：lovstudio 付费渠道 verified；GitHub 源码仓库当前公开，标为 public-source 并注明与商业授权口径不一致
+
 ## [0.21.0] - 2026-09-29
 
 ### Added

@@ -1,10 +1,12 @@
 schema: lovstudio/pricing-card/v1
-version: "0.13.0"
-model: free
+version: "0.21.1"
+model: paid
 currency: CNY
-list_price_cny: 0
-value_anchor: "把一次长录屏整理成可发布成片时，最昂贵的返工通常来自小改动触发全量重跑、误删原声、编码不兼容和没有证据的发布状态；本 Skill 将增量失效、阶段门禁与媒体 QC 固化为流程和脚本。"
-basis: "本地免费交付的是可复用的媒体制作方法、增量迭代计划与耗时记录、FFmpeg 参数、EDL 约束、BGM ducking、正式封面门禁和质检模板；用户自行提供素材、运行环境与平台账号。"
-boundary: "不包含云端渲染、素材购买、平台账号、Cookie、人工代发、远程存储或版权授权判断。"
-review_trigger: "当平台编码规范变化、加入云端执行或维护成本持续增加时，重新评估免费范围与付费执行服务。"
+list_price_cny: 99
+list_price_credits: 1394
+credit_rule: "官网换算规则 credits = round(人民币 / 7.1 × 100)"
+value_anchor: "一次长录屏到成片任务保守可省 2–8 小时的剪辑、字幕回灌、封面返工和交付排错。"
+basis: "1,394 Credits 是完整本地媒体制作工作流的一次性价格，用于验证付费转化；它不是定制剪辑、托管执行或成本回收价。（2026-09-29 读自官网详情页）"
+boundary: "覆盖素材扫描、剪辑规划、字幕审校、FFmpeg 渲染、原声与 BGM 混音、各槽位正式封面和交付质检；云端渲染、版权素材、账号和代发布按实际条件处理。"
+review_trigger: "首发 30 天、100 次付费兑换、版本变化，或平台交付规范与单买家支持成本明显变化时复评。"
 confidence: internal

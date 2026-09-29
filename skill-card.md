@@ -18,7 +18,7 @@ Media Creator Maintainers; contact through the repository issue tracker.
 
 ## License / Terms
 
-MIT. Users may use, modify and distribute the Skill while retaining the license notice.
+Commercial — all rights reserved. Sold on Lovstudio.AI as a PRO Skill; installation packages and documentation are available according to the buyer's entitlement. Copies of earlier versions obtained under the MIT License remain under MIT; see [`LICENSE`](LICENSE).
 
 ## Use Case
 
@@ -74,7 +74,7 @@ The primary preview is Remotion Studio with the current authoritative edit state
 
 ## Skill Version
 
-0.21.0
+0.21.1
 
 ## Ethical Considerations
 
@@ -92,8 +92,8 @@ The machine-readable card records four evidence-backed dimensions: editorial fit
 
 ### Pricing Basis
 
-See [`pricing-card.yaml`](pricing-card.yaml). The local Skill is free; its boundary excludes cloud rendering, media licensing, account credentials and platform operation.
+See [`pricing-card.yaml`](pricing-card.yaml). One-time purchase of 1,394 Credits (about ¥99 under the site's conversion rule) on Lovstudio.AI, read from the live product page on 2026-09-29. It covers the full local media workflow; cloud rendering, licensed media, accounts and publishing on the user's behalf are handled case by case.
 
 ### Distribution
 
-Paid channels: `workbuddy` and `skillpay` are `not-published`. Free channels: `github` is `not-published`, and `lovstudio` is `local-only`. None of these states claims a live remote release.
+Paid channels: `lovstudio` is `verified` (live product page, 2026-09-29); `workbuddy` and `skillpay` are `not-published`. The source repository on GitHub is currently public (`public-source`), which conflicts with the commercial terms; whether to make it private is the owner's decision.
