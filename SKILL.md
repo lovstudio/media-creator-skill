@@ -17,7 +17,7 @@ dependencies:
     install: "npx -y lovstudio@latest skills add media-publisher -y"
 metadata:
   author: contributors
-  version: "0.21.1"
+  version: "0.22.0"
   card_standard: lovstudio/skill-card/v1
   tags: [media-production, video-editing, ffmpeg, audio-mix, delivery-qc, cover-assets, opening-still, screen-studio, remotion]
   compatibility: "Python 3.8+, FFmpeg/FFprobe, numpy for narrative BGM gates, optional Whisper, Pillow or an image tool for cover assets; optional lov-media-publisher hand-off needs ego-browser and logged-in creator accounts, editing needs neither."
@@ -118,7 +118,7 @@ B 站 16:9、1920×1080 横版（见 [`references/platform-variants.md`](referen
 **这是系列片的第 N 期（N>1）时，先读 [`references/series-template.md`](references/series-template.md)，
 再读前一期留下的工程代码。** 那份文件是每期都要过的成片标准（开场策略、片尾资源卡、
 章节进度条、字幕位置、气口处理、重点词、配乐同源、响度口径）。复用前一期的版式常量、
-进度条实现与已确认 BGM 配置；**早期程序合成 BGM 已废弃**，不得 import 前作的配乐合成器。
+进度条实现；BGM 不沿用前一期，按本期内容重新选用或生成（见 Step 4 第 6 条）；**早期程序合成 BGM 已废弃**，不得 import 前作的配乐合成器。
 不做这一步的后果是可预期的：只做「删空档 + 烧字幕」就交付，会被判为粗糙初剪，然后整期重做。
 默认 `opening_still=false`：封面独立制作并与渲染并行，不再询问。只有用户主动要求视频内静态
 首帧时，才将 `opening_still=true` 写入运行记录，并在渲染前确认同画幅素材与适配方式。
@@ -252,8 +252,8 @@ prompt、方向稿或生成脚本时，`creative_status` 仍是 `blocked-on-cove
 3. BGM 是氛围层，不是主角。有人声、点击反馈或最终视频播放时，降低 BGM；成果段需要听清原声时可暂时只保留原声（叙事片按 6a 保持配乐连续）。
 4. BGM 采用淡入淡出和 ducking，避免循环接缝、突兀起音与尾部截断。具体滤镜和参数见 [`references/audio-mix.md`](references/audio-mix.md)。
 5. 若源素材本身没有可用原声，标记这一事实，不用 BGM 冒充真实反馈。
-6. **系列片默认使用已约定的 `Screen Studio Lo-fi / Bright Lounge`**：从已授权素材构建连续音乐床，不再运行或复用前作的程序合成器、`make_music.py` 或同类生成脚本；素材缺失时阻塞并报告，不得回退到程序合成或临时替代曲。
-6a. **Vlog、旅行、纪录、宣传等叙事片不套系列默认**：用户给的曲库整体可用，不按其顺口点名的几首收窄；作者点名的曲目先按其建议位置试，按章节与当时的真实心境混合多首，每条 cue 写明叙事理由。配乐默认从头连到尾、一首放到下一首接手，口播只压低不停歌（叙事片不适用上文第 3 条与 audio-mix「基本策略」的暂时静音），静默只给作者要求的段落，交付前扫音乐 stem 上 2 秒以上的断档；同语种歌词默认不压对白，只有作者明确点名该曲垫对白或明确说不为口播停歌时有条件放行，cue 上用 `lyric_override` 记理由与作者原话，放行句按组求 CER 均值对比纯人声底线、逐句只排抽听顺序；字卡下默认避开歌词；人声与音乐不必互斥，按时刻选 clear / blend / feature，段落过渡留足气口；以场景为单位、少换曲，agent 自发的修改只做减法，用 `cut_metrics.py` 量碎片化。字卡、照片、口播剪点与人物口径见 [`references/narrative-vlog.md`](references/narrative-vlog.md)。
+6. **BGM 每条按内容重新选用或生成，不固定同一首**：先从本片内容写一句音乐简报（节奏、情绪、能量曲线、是否纯器乐、在哪个画面收住），再从作者曲库或已授权曲库重新选曲，或用 AI 音乐模型按简报生成 2–3 个候选，挑一首并写明理由；不默认沿用上一期或任何固定曲目，作者点名或要求系列主题曲时才复用。前作的手写程序合成器、`make_music.py` 或同类生成脚本仍然废弃；选曲与生成都不可用时报告缺口并给候选，记录 `audio_status=blocked-on-bgm-source`，不静默回退到固定曲目。来源、授权或生成方式与费用写进报告，做法见 [`references/audio-mix.md`](references/audio-mix.md)「按内容选曲或生成」。
+6a. **Vlog、旅行、纪录、宣传等叙事片按多曲配乐处理**：用户给的曲库整体可用，不按其顺口点名的几首收窄；作者点名的曲目先按其建议位置试，按章节与当时的真实心境混合多首，每条 cue 写明叙事理由。配乐默认从头连到尾、一首放到下一首接手，口播只压低不停歌（叙事片不适用上文第 3 条与 audio-mix「基本策略」的暂时静音），静默只给作者要求的段落，交付前扫音乐 stem 上 2 秒以上的断档；同语种歌词默认不压对白，只有作者明确点名该曲垫对白或明确说不为口播停歌时有条件放行，cue 上用 `lyric_override` 记理由与作者原话，放行句按组求 CER 均值对比纯人声底线、逐句只排抽听顺序；字卡下默认避开歌词；人声与音乐不必互斥，按时刻选 clear / blend / feature，段落过渡留足气口；以场景为单位、少换曲，agent 自发的修改只做减法，用 `cut_metrics.py` 量碎片化。字卡、照片、口播剪点与人物口径见 [`references/narrative-vlog.md`](references/narrative-vlog.md)。
    `validate_cues.py --preset narrative`、`smr_check.py`、`intelligibility.py` 三道防听不清的客观门禁（数值是校准参考）与 `score_mix.py` 线性母带（`-3 dBTP`）见 [`references/audio-mix.md`](references/audio-mix.md) 的「叙事片多曲配乐」。
 6b. **片中念到的重点产品要做 research 再贴回画面，自研产品优先**（检索 → 官网 → 提炼当前定位
    → 截 hero/品牌资产 → 画中画停 4.5–5.5 秒）。流程、位置怎么量、以及 `$ego-browser` 的坑见
@@ -275,11 +275,11 @@ prompt、方向稿或生成脚本时，`creative_status` 仍是 `blocked-on-cove
 **口播变速不得通过重采样实现。** `resample` / `resample_poly` 会同时改变时长和音高；对白与真实系统声只用 FFmpeg `atempo` / Rubber Band 等保音高 time-stretch，并按 `output_frames × samples_per_frame` 锁定样本数。验收要与 1.0× 源声 A/B，响度报告不能替代音高听感。
 
 竖版安全区按最终发布容器而非裸画布定义；视频号 1080×1920 首轮预留顶部约 160px 并以真机截图校准，章节栏、正文舞台和调试框共用一份常量，详见 [`references/screen-studio-remotion-qc.md`](references/screen-studio-remotion-qc.md)。
-**BGM 永远最后挂载。** 先锁定画面、口播、系统声、字幕与章节，再把已授权的
-`Screen Studio Lo-fi / Bright Lounge` 扩展为一条与最终时间轴
+**BGM 永远最后挂载。** 先锁定画面、口播、系统声、字幕与章节，再把本片按内容选定或生成的 BGM
+扩展为一条与最终时间轴
 等长、无缝交叉淡化的连续音乐床，最后在 Remotion 根层只挂一次并全局 ducking。不得让 BGM 跟着 EDL
-逐片段裁切、重复 mount 或在转场处重启。程序合成 BGM 是已废弃路径；不能取得约定曲目或授权来源时，
-记录 `audio_status=blocked-on-agreed-bgm`，不得自行生成或换曲。
+逐片段裁切、重复 mount 或在转场处重启。手写程序合成器是已废弃路径；选曲与生成来源都不可用时，
+记录 `audio_status=blocked-on-bgm-source` 并给候选，不回退到固定曲目。
 
 Remotion 同时负责按开场策略启用的动画标题、章节进度条、摄像头 B-roll 布局、可视化解释、专业字幕、转场、横竖版和封面 Composition。动画必须由 `useCurrentFrame()` 等时间轴驱动，不使用运行时 CSS 动画；最终时长、fps 和画幅由数据/Composition 注册统一计算。
 

@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.22.0] - 2026-10-03
+
+### Changed
+
+- BGM 改为每条按内容重新选用或生成，不再固定使用 Screen Studio Lo-fi / Bright Lounge：作者 2026-10-03 原话「每次 bgm 应该基于内容自动生成或者重新选用，而非死板的用同一款」
+- SKILL.md Step 4 第 6 条与「BGM 永远最后挂载」、README、audio-mix 基本策略、screen-studio-remotion-qc、series-template（硬清单第 9 条与配乐第 1 条）、independent-clips、project-workspace、skill-card 同步改写；作者点名或要求系列主题曲时才复用同一首
+- 手写程序合成器（`make_music.py` 一类）仍然废弃；来源都不可用时的状态从 `blocked-on-agreed-bgm` 改为 `blocked-on-bgm-source`，并要求给出候选
+- validate_skill.py：BGM 必备措辞改为按内容选曲规则，旧的固定曲目措辞列入过时规则
+
+### Added
+
+- audio-mix「按内容选曲或生成」：音乐简报、选曲或 AI 生成 2–3 个候选、ASR 排查人声、按包络对齐收尾、结尾安静不超过约 1 秒、换音轨对比不重渲画面、报告字段；附 Lyria 3 经 OpenRouter 的调用要点与观测实例
+
 ## [0.21.1] - 2026-09-29
 
 ### Fixed

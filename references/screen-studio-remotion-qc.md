@@ -9,8 +9,8 @@
 低码率代理分片；缓存键包含 source revision、channel、源时间范围和 proxy profile，不预转完整长源轨。
 本轮把命中分片快速拼成每 channel 一条输出时长的预览轨，后续字幕、布局与 BGM 修改直接复用。
 只有画面与对白进入 `locked`，才按 EDL、
-语音清理和速度映射生成等长的最终连续四轨；BGM 最后从约定的
-`Screen Studio Lo-fi / Bright Lounge` 构建并进入最终混音。平台终版只在 `approved` 后执行。
+语音清理和速度映射生成等长的最终连续四轨；BGM 最后按本片内容选定或生成（见 audio-mix「按内容选曲或生成」），
+构建并进入最终混音。平台终版只在 `approved` 后执行。
 
 每轮先运行 `scripts/iteration_plan.py plan`。字幕/布局不重建底层媒体，BGM 不重建视频，平台规格不重做
 时间线，封面不触碰音视频。完整失效矩阵和耗时记录见 [`iteration-performance.md`](iteration-performance.md)。
@@ -147,9 +147,9 @@ Remotion Studio 预览中的 `OffthreadVideo` 常由 `<video>` 承载，最终�
 
 ## 7. BGM 最后挂载并做连续性扫描
 
-画面、对白、系统声、字幕、章节与资源页全部锁定后，才把已授权的 `Screen Studio Lo-fi / Bright Lounge`
-做成与最终时间线等长的单条音乐床。早期程序合成 BGM 已废弃：不得调用前作合成器，也不得在素材缺失时
-自动生成替代曲；缺失时记录 `audio_status=blocked-on-agreed-bgm`。
+画面、对白、系统声、字幕、章节与资源页全部锁定后，才把本片按内容选定或生成的 BGM
+做成与最终时间线等长的单条音乐床。早期程序合成 BGM 已废弃：不得调用前作合成器；选曲与生成来源都不可用时
+记录 `audio_status=blocked-on-bgm-source` 并给候选，不回退到固定曲目。
 循环连接使用交叉淡化，Remotion 根层只挂载一次。验收至少包括：
 
 - BGM 与时间线时长一致；

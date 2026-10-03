@@ -436,11 +436,11 @@ def validate_composition_reference(skill_root: Path, errors: list[str]) -> None:
 
 def validate_bgm_policy(skill_root: Path, errors: list[str]) -> None:
     required = {
-        "SKILL.md": ("Screen Studio Lo-fi / Bright Lounge", "程序合成 BGM 已废弃"),
-        "README.md": ("Screen Studio Lo-fi / Bright Lounge", "程序合成路径已废弃"),
-        "references/audio-mix.md": ("Screen Studio Lo-fi / Bright Lounge", "blocked-on-agreed-bgm"),
-        "references/series-template.md": ("Screen Studio Lo-fi / Bright Lounge", "make_music.py"),
-        "references/screen-studio-remotion-qc.md": ("Screen Studio Lo-fi / Bright Lounge", "blocked-on-agreed-bgm"),
+        "SKILL.md": ("BGM 每条按内容重新选用或生成", "程序合成 BGM 已废弃", "blocked-on-bgm-source"),
+        "README.md": ("按内容重新选曲", "程序合成路径已废弃"),
+        "references/audio-mix.md": ("## 按内容选曲或生成", "blocked-on-bgm-source"),
+        "references/series-template.md": ("按内容", "make_music.py"),
+        "references/screen-studio-remotion-qc.md": ("按本片内容选定或生成", "blocked-on-bgm-source"),
     }
     for relative, phrases in required.items():
         path = skill_root / relative
@@ -449,12 +449,14 @@ def validate_bgm_policy(skill_root: Path, errors: list[str]) -> None:
         text = read_text(path)
         for phrase in phrases:
             if phrase not in text:
-                errors.append(f"{path}: agreed BGM policy is missing '{phrase}'")
+                errors.append(f"{path}: per-content BGM policy is missing '{phrase}'")
 
     stale_rules = {
-        "SKILL.md": ("import 前作的合成脚本", "配乐合成器、进度条实现"),
-        "README.md": ("配乐合成器直接 import",),
-        "references/series-template.md": ("与前作同一套合成器", "直接 import 前作的合成脚本"),
+        "SKILL.md": ("import 前作的合成脚本", "配乐合成器、进度条实现", "系列片默认使用已约定的", "blocked-on-agreed-bgm"),
+        "README.md": ("配乐合成器直接 import", "统一使用约定的"),
+        "references/audio-mix.md": ("默认 BGM 是已授权的", "blocked-on-agreed-bgm"),
+        "references/series-template.md": ("与前作同一套合成器", "直接 import 前作的合成脚本", "必须使用约定 BGM", "固定使用已授权的"),
+        "references/screen-studio-remotion-qc.md": ("blocked-on-agreed-bgm",),
     }
     for relative, phrases in stale_rules.items():
         path = skill_root / relative

@@ -1,10 +1,10 @@
 # 天才剪辑师 · Video Studio
 
-![Version](https://img.shields.io/badge/version-0.21.1-CC785C)
+![Version](https://img.shields.io/badge/version-0.22.0-CC785C)
 
 把 MP4 或 `.screenstudio` 源工程整理成两阶段交付：先做 Remotion Studio 与字幕审校版本，再以批准字幕生成归档母版、平台文件和正式封面图片。源工程模式保留独立屏幕、摄像头、麦克风、系统声、鼠标和快捷键事件；跨平台任务先完成并质检视频号 9:16，再顺序派生 B 站 16:9。
 
-麦克风先解码为 PCM 再做样本级口水词/口误剪辑。`draft` 只为 EDL 命中区间懒生成 source-scoped 代理分片，不预转完整长源轨；`locked` 后才生成最终连续媒体与混音，`approved` 后才全片渲染。字幕、布局或 BGM 微调通过差异化失效与局部 canary 验证，不再触发五轨和整片重跑。录屏与知识系列的 BGM 默认使用已授权的 `Screen Studio Lo-fi / Bright Lounge`；早期程序合成路径已废弃。
+麦克风先解码为 PCM 再做样本级口水词/口误剪辑。`draft` 只为 EDL 命中区间懒生成 source-scoped 代理分片，不预转完整长源轨；`locked` 后才生成最终连续媒体与混音，`approved` 后才全片渲染。字幕、布局或 BGM 微调通过差异化失效与局部 canary 验证，不再触发五轨和整片重跑。BGM 每条按内容重新选曲或用 AI 音乐模型生成，不固定同一首；早期程序合成路径已废弃。
 Vlog、旅行片等叙事片则把用户给的整个曲库纳入选曲，按叙事混合多首，并用 cue 校验、语音频段 SMR 与 Whisper 可懂度三道客观门禁验收。
 口播加速使用保持原音高的 time-stretch，禁止用重采样改变对白时长。
 
@@ -181,7 +181,7 @@ python3 scripts/cut_metrics.py --film work/music/film.json --cues work/music/cue
 
 ## 原子组合
 
-做系列片的第二期及以后，先读 [`references/series-template.md`](references/series-template.md)：开场分支、逐章黑幕标题卡、片尾资源卡、章节进度条、字幕位置、气口处理、重点词、配乐同源、响度口径，每期逐条过。前一期的版式常量与进度条实现可以复用；BGM 不复用程序合成器，统一使用约定的 `Bright Lounge`。
+做系列片的第二期及以后，先读 [`references/series-template.md`](references/series-template.md)：开场分支、逐章黑幕标题卡、片尾资源卡、章节进度条、字幕位置、气口处理、重点词、配乐同源、响度口径，每期逐条过。前一期的版式常量与进度条实现可以复用；BGM 每期按内容重新选曲或生成，不复用程序合成器，也不固定沿用同一首。
 
 `.screenstudio` + Remotion 项目另外执行 [`references/screen-studio-remotion-qc.md`](references/screen-studio-remotion-qc.md)，覆盖完整句、无静音钩子、摄像头连续性、官网产品卡、资源索引、连续 BGM 与 Studio 实播验收。
 

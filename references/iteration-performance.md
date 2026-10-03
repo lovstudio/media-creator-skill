@@ -65,7 +65,7 @@ EDL 版本放进键名。draft 每轨允许把本轮命中的分片快速拼成�
     "subtitles": "srt-v7",
     "layout": "layout-v2",
     "audio": "voice-v3",
-    "bgm": "bright-lounge-v1",
+    "bgm": "bgm-content-brief-v1",
     "platform": "channels-1080x1920-v1",
     "cover": "cover-v2"
   }
